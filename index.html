@@ -1,5 +1,584 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>사하제일간호학원</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+    background: #f4f5f7;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+}
+.container {
+    width: 100%;
+    max-width: 400px;
+    background: #f4f5f7;
+    min-height: 100vh;
+}
 
+/* ── 헤더 ── */
+.app-header {
+    background: white;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #eeeef5;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.header-logo {
+    height: 26px;
+    width: auto;
+    border-radius: 4px;
+}
+.header-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: #1a1a2e;
+    letter-spacing: -0.5px;
+}
+/* 오른쪽 A학원 배지 */
+.header-school-badge {
+    background: #ede9fe;
+    color: #6c63ff;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 5px 14px;
+    border-radius: 20px;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+}
+
+/* ── 유저 카드 ── */
+.user-card {
+    background: white;
+    border-radius: 16px;
+    margin: 12px 16px 0;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.user-left { flex: 1; }
+.user-name {
+    font-size: 20px;
+    font-weight: 900;
+    color: #1a1a2e;
+    letter-spacing: -0.5px;
+}
+.user-hospital {
+    display: inline-block;
+    background: #ede9fe;
+    color: #6c63ff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-top: 5px;
+}
+.user-updated {
+    font-size: 10px;
+    color: #b0b5be;
+    margin-top: 4px;
+}
+/* 통계 칩 */
+.stats-chips { display: flex; gap: 6px; }
+.stats-chip {
+    background: #f8f8fb;
+    border: 1px solid #eeeef5;
+    border-radius: 10px;
+    padding: 6px 10px;
+    text-align: center;
+    min-width: 44px;
+}
+.stats-chip-label { font-size: 10px; color: #9096a2; font-weight: 600; margin-bottom: 2px; }
+.stats-chip-val   { font-size: 14px; font-weight: 900; color: #1a1a2e; }
+
+/* ── 프로그레스 바 ── */
+.progress-wrap {
+    margin: 10px 16px 0;
+    background: white;
+    border-radius: 14px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.progress-track {
+    height: 12px;
+    background: #eeeef5;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6c63ff, #a78bfa);
+    border-radius: 6px;
+    width: 19%;  /* 예시: 150/780 */
+    transition: width 1s ease;
+}
+.progress-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #6c63ff;
+    text-align: right;
+}
+
+/* ── 캐릭터 + 출퇴근 버튼 영역 ── */
+.action-card {
+    background: white;
+    border-radius: 18px;
+    margin: 10px 16px 0;
+    padding: 20px 16px;
+    box-shadow: 0 2px 12px rgba(108,99,255,0.08);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.character-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ★ 캐릭터 이미지 영역 ★ */
+.character-img-wrap {
+    width: 90px;
+    height: 90px;
+    border-radius: 16px;
+    background: #f4f2ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.character-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none; /* 실제 이미지 src 넣으면 display:block으로 바뀜 */
+}
+/* 이미지 없을 때 보여줄 placeholder 텍스트 */
+.character-img-placeholder {
+    font-size: 11px;
+    color: #b0b5be;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: #ede9fe;
+    color: #6c63ff;
+    white-space: nowrap;
+}
+.status-badge.working { background: #dcfce7; color: #16a34a; }
+.status-badge.done    { background: #fef9c3; color: #ca8a04; }
+
+/* 출퇴근 시간 표시 */
+.time-chips { display:flex; gap:6px; margin-top:4px; width:100%; }
+.time-chip-item {
+    flex:1; background:#f8f8fb; border-radius:8px;
+    padding:5px 6px; text-align:center; display:none;
+}
+.time-chip-label-s { font-size:9px; color:#9096a2; font-weight:600; }
+.time-chip-val-s   { font-size:11px; font-weight:800; color:#1a1a2e; letter-spacing:-0.5px; }
+
+.btn-col {
+    flex: 1.4;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 버튼 */
+.btn-checkin {
+    width: 100%; padding: 15px;
+    font-size: 15px; font-weight: 800;
+    border-radius: 14px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, #6c63ff 0%, #a78bfa 100%);
+    color: white;
+    box-shadow: 0 4px 14px rgba(108,99,255,0.35);
+    transition: all 0.2s; letter-spacing: -0.5px;
+}
+.btn-checkin:active { transform: scale(0.96); }
+.btn-checkin:disabled {
+    background: #e8e9ec !important;
+    color: #b0b5be !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
+.btn-checkout {
+    width: 100%; padding: 15px;
+    font-size: 15px; font-weight: 800;
+    border-radius: 14px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, #f472b6 0%, #f87171 100%);
+    color: white;
+    box-shadow: 0 4px 14px rgba(244,114,182,0.3);
+    transition: all 0.2s; letter-spacing: -0.5px;
+}
+.btn-checkout:active { transform: scale(0.96); }
+.btn-checkout:disabled {
+    background: #e8e9ec !important;
+    color: #b0b5be !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* 누락 배너 */
+#missing-banner {
+    display: none;
+    background: #fff1f2;
+    border: 1.5px solid #fca5a5;
+    border-radius: 10px;
+    padding: 10px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #ef4444;
+}
+
+/* ── 하단 3분할 그리드 ── */
+.bottom-grid {
+    margin: 10px 16px 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.grid-top {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    background: white;
+}
+.grid-main-btn {
+    background: white;
+    border: none;
+    border-right: 1px solid #f0f0f5;
+    padding: 16px 4px 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s;
+}
+.grid-main-btn:last-child { border-right: none; }
+.grid-main-btn:active { background: #f8f8fb; }
+
+/* ★ 버튼 이미지 영역 ★ */
+.grid-btn-img-wrap {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f4f2ff;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.grid-btn-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* src 비워놓음 — 이미지 파일 받으면 여기에 경로 넣기 */
+}
+/* 이미지 없을 때 placeholder */
+.grid-btn-img-wrap::after {
+    content: '🖼';
+    font-size: 22px;
+    color: #c4b5fd;
+}
+.grid-btn-img-wrap img[src]:not([src=""]) + ::after { display: none; }
+
+.grid-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.4;
+    letter-spacing: -0.3px;
+}
+.grid-bottom {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    background: #f8f8fb;
+    border-top: 1px solid #f0f0f5;
+}
+.grid-sub-btn {
+    background: none;
+    border: none;
+    border-right: 1px solid #f0f0f5;
+    padding: 10px 4px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9096a2;
+    transition: background 0.15s;
+    letter-spacing: -0.3px;
+}
+.grid-sub-btn:last-child { border-right: none; }
+.grid-sub-btn:active { background: #eeeef5; }
+
+/* ── 실습근무카드 현황 ── */
+.section-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #1a1a2e;
+    padding: 16px 16px 8px;
+    letter-spacing: -0.5px;
+}
+
+.bottom-spacing { height: 30px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ★ 헤더: 로고 왼쪽 / A학원 오른쪽 ★ -->
+    <div class="app-header">
+        <div class="header-left">
+            <!--
+                여기에 로고 img 태그 넣기
+                <img src="로고파일경로" alt="Here로고" class="header-logo">
+            -->
+            <span class="header-title">사하제일간호학원</span>
+        </div>
+        <!-- ★ 오른쪽 A학원 배지 ★ -->
+        <div class="header-school-badge">A학원</div>
+    </div>
+
+    <!-- 메인 화면 (로그인 후) -->
+    <div id="main-section">
+
+        <!-- ① 이름 + 병원 + 지각/조퇴/외출 -->
+        <!--  ★ 동그란 아바타("이") 완전 제거 ★ -->
+        <div class="user-card">
+            <div class="user-left">
+                <div class="user-name" id="user-name">이상훈</div>
+                <div class="user-hospital" id="user-hospital">사하부산병원</div>
+                <div class="user-updated" id="last-updated-time">🕒 업데이트 전</div>
+            </div>
+            <div class="stats-chips">
+                <div class="stats-chip">
+                    <div class="stats-chip-label">지각</div>
+                    <div class="stats-chip-val" id="stat-tardy">2회</div>
+                </div>
+                <div class="stats-chip">
+                    <div class="stats-chip-label">조퇴</div>
+                    <div class="stats-chip-val" id="stat-early">1회</div>
+                </div>
+                <div class="stats-chip">
+                    <div class="stats-chip-label">외출</div>
+                    <div class="stats-chip-val" id="stat-out">0회</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ② 실습시간 프로그레스 바 -->
+        <div class="progress-wrap">
+            <div class="progress-track">
+                <div class="progress-fill" id="progress-fill" style="width:19%;"></div>
+            </div>
+            <div class="progress-label" id="stat-hours">150h / 780h</div>
+        </div>
+
+        <!-- ③ 캐릭터 + 출퇴근 버튼 -->
+        <div class="action-card">
+            <div class="character-col">
+
+                <!-- ★ 캐릭터 이미지 영역
+                     - 출근 전 / 퇴근 후  → id="img-egg"  (달걀.png)
+                     - 출근 후 / 퇴근 전  → id="img-chick" (병아리.png)
+                     - 이미지 파일 받으면 src 경로만 넣으면 됨 ★ -->
+                <div class="character-img-wrap">
+                    <img id="img-egg"   src="" alt="달걀"   style="display:block;">
+                    <img id="img-chick" src="" alt="병아리" style="display:none;">
+                    <!--
+                        사용법:
+                        출근 전·퇴근 후 → img-egg  display:block / img-chick display:none
+                        출근 후·퇴근 전 → img-egg  display:none  / img-chick display:block
+
+                        이미지 파일 경로 예시:
+                        <img id="img-egg"   src="달걀.png"   ...>
+                        <img id="img-chick" src="병아리.png" ...>
+                    -->
+                </div>
+
+                <div class="status-badge" id="status-badge">출근 전</div>
+                <div class="time-chips" id="time-display">
+                    <div class="time-chip-item" id="check-in-time">
+                        <div class="time-chip-label-s">출근</div>
+                        <div class="time-chip-val-s" id="check-in-value">-</div>
+                    </div>
+                    <div class="time-chip-item" id="check-out-time">
+                        <div class="time-chip-label-s">퇴근</div>
+                        <div class="time-chip-val-s" id="check-out-value">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-col">
+                <!-- 누락 배너 -->
+                <div id="missing-banner">
+                    <span id="missing-banner-text">🚨 누락 기록 (눌러서 서명)</span>
+                </div>
+                <!-- 출근 버튼 -->
+                <button class="btn-checkin" id="check-in-btn" onclick="doCheckIn()">
+                    출근하기
+                </button>
+                <!-- 퇴근 버튼 (출근 전엔 숨겨짐) -->
+                <button class="btn-checkout" id="check-out-btn"
+                        style="display:none;" disabled onclick="doCheckOut()">
+                    퇴근하기
+                </button>
+            </div>
+        </div>
+
+        <!-- ④ 하단 3분할 그리드 -->
+        <div class="bottom-grid">
+            <div class="grid-top">
+
+                <!-- 병가 서류제출 -->
+                <button class="grid-main-btn" onclick="openSickLeaveModal()">
+                    <div class="grid-btn-img-wrap">
+                        <!--
+                            ★ 이미지 비워놓음 ★
+                            이미지 받으면:
+                            <img src="병가아이콘.png" alt="병가">
+                        -->
+                    </div>
+                    <div class="grid-label">병가<br>서류제출</div>
+                </button>
+
+                <!-- 수강증명서 -->
+                <button class="grid-main-btn" onclick="openCertModal()">
+                    <div class="grid-btn-img-wrap">
+                        <!--
+                            ★ 이미지 비워놓음 ★
+                            이미지 받으면:
+                            <img src="증명서아이콘.png" alt="수강증명서">
+                        -->
+                    </div>
+                    <div class="grid-label">수강<br>증명서</div>
+                </button>
+
+                <!-- 지난달 실습인증 -->
+                <button class="grid-main-btn" id="last-interval-btn" onclick="openLastInterval()">
+                    <div class="grid-btn-img-wrap">
+                        <!--
+                            ★ 이미지 비워놓음 ★
+                            이미지 받으면:
+                            <img src="실습인증아이콘.png" alt="실습인증">
+                        -->
+                    </div>
+                    <div class="grid-label">지난달<br>실습인증</div>
+                </button>
+
+            </div>
+            <div class="grid-bottom">
+                <button class="grid-sub-btn" onclick="openHistoryModal('sick')">제출기록</button>
+                <button class="grid-sub-btn" onclick="openHistoryModal('cert')">발급기록</button>
+                <button class="grid-sub-btn" onclick="scrollToIntervalList()">인증현황</button>
+            </div>
+        </div>
+
+        <!-- ⑤ 실습근무카드 현황 -->
+        <div id="interval-list-section">
+            <div class="section-title">📋 실습근무카드 현황</div>
+            <div id="interval-list">
+                <!-- 예시 카드 (실제 JS가 채워줌) -->
+                <div style="background:white; border-radius:14px; padding:14px 16px;
+                            margin:0 16px 8px; box-shadow:0 2px 8px rgba(0,0,0,0.04);
+                            display:flex; align-items:center; justify-content:space-between;
+                            border:1.5px solid #c4b5fd;">
+                    <div>
+                        <span style="display:inline-block; background:#ede9fe; color:#6c63ff;
+                                     font-size:11px; font-weight:700; padding:3px 10px;
+                                     border-radius:20px; margin-bottom:5px;">1회차</span>
+                        <div style="font-size:13px; font-weight:700; color:#1a1a2e;
+                                    letter-spacing:-0.5px;">26-02-06~03-07</div>
+                    </div>
+                    <button style="background:linear-gradient(135deg,#6c63ff,#a78bfa);
+                                   color:white; border:none; border-radius:10px;
+                                   padding:9px 14px; font-size:12px; font-weight:800;
+                                   cursor:pointer; white-space:nowrap;
+                                   box-shadow:0 3px 10px rgba(108,99,255,0.3);">
+                        서명하기
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-spacing"></div>
+    </div>
+</div>
+
+<script>
+/*
+ ★ 캐릭터 이미지 전환 함수 ★
+ - 출근 전 / 퇴근 완료 → 달걀 이미지
+ - 실습 중(출근 후)    → 병아리 이미지
+*/
+function updateStatus(status) {
+    var badge = document.getElementById('status-badge');
+    var egg   = document.getElementById('img-egg');
+    var chick = document.getElementById('img-chick');
+
+    switch(status) {
+        case 'waiting':   // 출근 전
+            badge.className = 'status-badge';
+            badge.textContent = '출근 전';
+            if (egg)   egg.style.display   = 'block';
+            if (chick) chick.style.display = 'none';
+            break;
+        case 'working':   // 실습 중
+            badge.className = 'status-badge working';
+            badge.textContent = '실습 중';
+            if (egg)   egg.style.display   = 'none';
+            if (chick) chick.style.display = 'block';
+            break;
+        case 'completed': // 퇴근 완료
+            badge.className = 'status-badge done';
+            badge.textContent = '실습 완료';
+            if (egg)   egg.style.display   = 'block';
+            if (chick) chick.style.display = 'none';
+            break;
+    }
+}
+
+function openLastInterval() {
+    if (!window.currentUser || !window.currentUser.intervals) return;
+    var avail = currentUser.intervals.find(function(i){ return i.status === 'available'; });
+    if (!avail) { alert('현재 서명 가능한 회차가 없습니다.'); return; }
+    openSignatureUI(avail.startDate, avail.endDate, avail.intervalStr);
+}
+
+function scrollToIntervalList() {
+    var el = document.getElementById('interval-list-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
     background: #f4f5f7;   /* 🔥 직방처럼 연회색 배경 */
