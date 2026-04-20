@@ -715,6 +715,8 @@
     let modalCtx, isModalDrawing = false;
     let currentPendingRequest = "";
     let bsCurrentInterval = null;
+let bsManagerPhone = '';
+let missingManagerPhone = '';
     let stepCtx = {}, stepDrawing = {};
 
     const CONFIG = {
@@ -1184,9 +1186,10 @@
     async function requestBsOTP() {
         const phone = document.getElementById('bs-manager-phone').value.trim();
         if (!phone) { alert('휴대폰 번호를 입력해주세요.'); return; }
+        bsManagerPhone = phone;
         showLoader(true);
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'requestOTP', managerPhone:phone, kakaoId:currentUser.kakaoId, name:currentUser.name }) });
+            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'requestOTP', phone:phone, kakaoId:currentUser.kakaoId, name:currentUser.name }) });
             const result = await response.json();
             showLoader(false);
             if (result.status === 'success') {
@@ -1202,7 +1205,7 @@
         if (!otp) { alert('인증번호를 입력해주세요.'); return; }
         showLoader(true);
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'verifyOTP', otp, kakaoId:currentUser.kakaoId }) });
+            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'verifyOTP', otp, phone:bsManagerPhone }) });
             const result = await response.json();
             showLoader(false);
             if (result.status === 'success') { alert('인증 완료! 담당자 서명을 받아주세요.'); goSignStep(3); }
@@ -1380,6 +1383,7 @@
             try {
                 const response = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body:options.body });
                 if (response.ok) return response;
+                if (i === retries-1) throw new Error('서버 오류: ' + response.status);
             } catch(error) {
                 if (i === retries-1) throw error;
                 await new Promise(resolve => setTimeout(resolve, 1000*(i+1)));
@@ -1604,9 +1608,10 @@
     async function requestManagerOTP() {
         const phone = document.getElementById('manager-phone-input').value.trim();
         if (!phone) { alert('담당자 휴대폰 번호를 입력해주세요.'); return; }
+        missingManagerPhone = phone;
         showLoader(true);
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'requestOTP', managerPhone:phone, kakaoId:currentUser.kakaoId, name:currentUser.name }) });
+            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'requestOTP', phone:phone, kakaoId:currentUser.kakaoId, name:currentUser.name }) });
             const result = await response.json();
             showLoader(false);
             if (result.status==='success') { document.getElementById('otp-request-section').style.display='none'; document.getElementById('otp-verify-section').style.display='block'; alert('인증번호가 발송되었습니다.'); }
@@ -1618,7 +1623,7 @@
         if (!otp) { alert('인증번호를 입력해주세요.'); return; }
         showLoader(true);
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'verifyOTP', otp, kakaoId:currentUser.kakaoId }) });
+            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({action:'verifyOTP', otp, phone:missingManagerPhone }) });
             const result = await response.json();
             showLoader(false);
             if (result.status==='success') { alert('인증 완료. 서명을 진행해주세요.'); document.getElementById('otp-request-section').style.display='none'; document.getElementById('otp-verify-section').style.display='none'; document.getElementById('manager-signature-section').style.display='block'; }
