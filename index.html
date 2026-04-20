@@ -942,6 +942,12 @@
 
     // ==================== 출결 상태 확인 ====================
     async function checkTodayStatus() {
+        // 서버 응답 기다리는 동안 출근 버튼 먼저 표시
+        const inBtn  = document.getElementById('check-in-btn');
+        const outBtn = document.getElementById('check-out-btn');
+        inBtn.style.display = 'block';
+        inBtn.disabled = false;
+        inBtn.textContent = '출근';
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, {
                 body: JSON.stringify({ action:'getTodayStatus', kakaoId:currentUser.kakaoId })
