@@ -942,21 +942,20 @@
 
     // ==================== 출결 상태 확인 ====================
     async function checkTodayStatus() {
-        // 서버 응답 기다리는 동안 출근 버튼 먼저 표시
         const inBtn  = document.getElementById('check-in-btn');
         const outBtn = document.getElementById('check-out-btn');
+        const badge  = document.getElementById('new-status-badge');
+
+        // 서버 응답 전 출근 버튼 먼저 표시
         inBtn.style.display = 'block';
         inBtn.disabled = false;
         inBtn.textContent = '출근';
+
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, {
                 body: JSON.stringify({ action:'getTodayStatus', kakaoId:currentUser.kakaoId })
             });
             const result = await response.json();
-
-            const inBtn  = document.getElementById('check-in-btn');
-            const outBtn = document.getElementById('check-out-btn');
-            const badge  = document.getElementById('new-status-badge');
 
             if (result.missingRecord) {
                 window.currentMissingRecord = result.missingRecord;
@@ -998,7 +997,6 @@
             }
         } catch(error) {
             console.error('상태 확인 오류:', error);
-            const inBtn = document.getElementById('check-in-btn');
             inBtn.style.display = 'block';
             inBtn.disabled = false;
             inBtn.textContent = '출근';
