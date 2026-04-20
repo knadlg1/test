@@ -95,16 +95,16 @@
         /* action-card */
         .action-card { background:#fff; margin:8px 12px 0; border-radius:14px; padding:14px; border:1px solid #eee; display:flex; align-items:center; gap:12px; }
         .char-col { display:flex; flex-direction:column; align-items:center; gap:6px; }
-        .char-box { width:96px; height:96px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; border:none; overflow:hidden; }
+        .char-box { width:120px; height:120px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; border:none; overflow:hidden; }
         .char-box img { width:100%; height:100%; object-fit:contain; }
-        .char-placeholder { font-size:40px; }
+        .char-placeholder { font-size:52px; }
         .new-status-badge { font-size:10px; font-weight:700; padding:3px 10px; border-radius:20px; background:#ede9fe; color:#6c63ff; white-space:nowrap; }
         .new-status-badge.working { background:#dcfce7; color:#16a34a; }
         .new-status-badge.done    { background:#fef9c3; color:#ca8a04; }
         .btn-col { flex:1; display:flex; flex-direction:column; gap:8px; max-width:55%; }
         .btn-checkin  { width:100%; padding:20px 8px; font-size:14px; font-weight:700; border-radius:12px; border:none; cursor:pointer; color:#fff; background:#7c9cf5; display:none; }
         .btn-checkin:disabled  { background:#e5e7eb !important; color:#aaa !important; cursor:not-allowed; }
-        .btn-checkout { width:100%; padding:20px 8px; font-size:14px; font-weight:700; border-radius:12px; border:none; cursor:pointer; color:#fff; background:#5ec490; display:none; }
+        .btn-checkout { width:100%; padding:20px 8px; font-size:14px; font-weight:700; border-radius:12px; border:none; cursor:pointer; color:#fff; background:#5ec490; display:block; }
         .btn-checkout:disabled { background:#e5e7eb !important; color:#aaa !important; cursor:not-allowed; }
 
         /* 하단 그리드 */
@@ -911,8 +911,17 @@ let missingManagerPhone = '';
         }
         renderIntervalList();
 
-        // 출근 버튼 일단 표시 (상태확인 전)
-        document.getElementById('check-in-btn').style.display = 'block';
+                // 버튼 초기 상태: 출근 활성 / 퇴근 비활성
+        const inBtn  = document.getElementById('check-in-btn');
+        const outBtn = document.getElementById('check-out-btn');
+        inBtn.style.display  = 'block';
+        inBtn.disabled       = false;
+        inBtn.textContent    = '출근';
+        inBtn.style.background = '';
+        outBtn.style.display = 'block';
+        outBtn.disabled      = true;
+        outBtn.textContent   = '퇴근';
+        outBtn.style.background = '';
     }
 
     // 그리드 이미지: src 있으면 이미지, 없으면 이모지 fallback
@@ -972,31 +981,42 @@ let missingManagerPhone = '';
                 document.getElementById('missing-banner').style.display = 'none';
             }
 
-            if (result.checkIn && result.checkIn !== "") {
+                        if (result.checkIn && result.checkIn !== "") {
+                // 출근 완료 → 출근 버튼 회색·비활성, 시간 표시
                 inBtn.style.display = 'block';
                 inBtn.disabled = true;
-                inBtn.textContent = result.checkIn;
+                inBtn.textContent = '출근 ' + result.checkIn;
+                inBtn.style.background = '#9ca3af';
                 setCharacter('chick');
                 badge.className = 'new-status-badge working';
                 badge.textContent = '실습 중';
 
                 if (result.checkOut && result.checkOut !== "") {
+                    // 퇴근 완료 → 퇴근 버튼도 회색·비활성, 시간 표시
                     outBtn.style.display = 'block';
                     outBtn.disabled = true;
-                    outBtn.textContent = result.checkOut;
+                    outBtn.textContent = '퇴근 ' + result.checkOut;
+                    outBtn.style.background = '#9ca3af';
                     setCharacter('egg');
                     badge.className = 'new-status-badge done';
                     badge.textContent = '실습 완료';
                 } else {
+                    // 출근 후 미퇴근 → 퇴근 버튼 활성
                     outBtn.style.display = 'block';
                     outBtn.disabled = false;
                     outBtn.textContent = '퇴근';
+                    outBtn.style.background = '';
                 }
             } else {
+                // 출근 전 → 출근 활성, 퇴근 비활성
                 inBtn.style.display = 'block';
                 inBtn.disabled = false;
                 inBtn.textContent = '출근';
-                outBtn.style.display = 'none';
+                inBtn.style.background = '';
+                outBtn.style.display = 'block';
+                outBtn.disabled = true;
+                outBtn.textContent = '퇴근';
+                outBtn.style.background = '';
                 badge.className = 'new-status-badge';
                 badge.textContent = '출근 전';
             }
@@ -1005,6 +1025,11 @@ let missingManagerPhone = '';
             inBtn.style.display = 'block';
             inBtn.disabled = false;
             inBtn.textContent = '출근';
+            inBtn.style.background = '';
+            outBtn.style.display = 'block';
+            outBtn.disabled = true;
+            outBtn.textContent = '퇴근';
+            outBtn.style.background = '';
         }
     }
 
@@ -1072,15 +1097,15 @@ let missingManagerPhone = '';
             const result = await response.json();
             overlay.style.display = 'none';
 
-            if (result.status === 'success') {
+                        if (result.status === 'success') {
                 const badge = document.getElementById('new-status-badge');
                 if (type === '출근') {
-                    inBtn.disabled = true; inBtn.textContent = timeStr;
-                    outBtn.style.display = 'block'; outBtn.disabled = false; outBtn.textContent = '퇴근';
+                    inBtn.disabled = true; inBtn.textContent = '출근 ' + timeStr; inBtn.style.background = '#9ca3af';
+                    outBtn.style.display = 'block'; outBtn.disabled = false; outBtn.textContent = '퇴근'; outBtn.style.background = '';
                     setCharacter('chick');
                     badge.className = 'new-status-badge working'; badge.textContent = '실습 중';
                 } else {
-                    outBtn.disabled = true; outBtn.textContent = timeStr;
+                    outBtn.disabled = true; outBtn.textContent = '퇴근 ' + timeStr; outBtn.style.background = '#9ca3af';
                     setCharacter('egg');
                     badge.className = 'new-status-badge done'; badge.textContent = '실습 완료';
                 }
