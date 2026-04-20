@@ -72,7 +72,7 @@
         .u-hospital { display:inline-block; background:#ede9fe; color:#6c63ff; font-size:10px; font-weight:700; padding:2px 9px; border-radius:20px; margin-top:4px; }
         .stat-circles { display:flex; gap:8px; }
         .stat-circle { display:flex; flex-direction:column; align-items:center; gap:2px; }
-        .circle { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; }
+        .circle { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; }
         .stat-label { font-size:9px; color:#666; }
 
         /* 진행률 */
@@ -95,16 +95,16 @@
         /* action-card */
         .action-card { background:#fff; margin:8px 12px 0; border-radius:14px; padding:14px; border:1px solid #eee; display:flex; align-items:center; gap:12px; }
         .char-col { display:flex; flex-direction:column; align-items:center; gap:6px; }
-        .char-box { width:80px; height:80px; border-radius:12px; background:#f4f2ff; display:flex; align-items:center; justify-content:center; border:1px dashed #c4b5fd; overflow:hidden; }
+        .char-box { width:96px; height:96px; border-radius:14px; background:#f4f2ff; display:flex; align-items:center; justify-content:center; border:1px dashed #c4b5fd; overflow:hidden; }
         .char-box img { width:100%; height:100%; object-fit:contain; }
-        .char-placeholder { font-size:32px; }
+        .char-placeholder { font-size:40px; }
         .new-status-badge { font-size:10px; font-weight:700; padding:3px 10px; border-radius:20px; background:#ede9fe; color:#6c63ff; white-space:nowrap; }
         .new-status-badge.working { background:#dcfce7; color:#16a34a; }
         .new-status-badge.done    { background:#fef9c3; color:#ca8a04; }
-        .btn-col { flex:1; display:flex; flex-direction:column; gap:8px; }
-        .btn-checkin  { width:100%; padding:14px; font-size:14px; font-weight:700; border-radius:12px; border:none; cursor:pointer; color:#fff; background:#7c9cf5; display:none; }
+        .btn-col { flex:1; display:flex; flex-direction:column; gap:8px; max-width:55%; }
+        .btn-checkin  { width:100%; padding:20px 8px; font-size:14px; font-weight:700; border-radius:12px; border:none; cursor:pointer; color:#fff; background:#7c9cf5; display:none; }
         .btn-checkin:disabled  { background:#e5e7eb !important; color:#aaa !important; cursor:not-allowed; }
-        .btn-checkout { width:100%; padding:14px; font-size:14px; font-weight:700; border-radius:12px; border:none; cursor:pointer; color:#fff; background:#5ec490; display:none; }
+        .btn-checkout { width:100%; padding:20px 8px; font-size:14px; font-weight:700; border-radius:12px; border:none; cursor:pointer; color:#fff; background:#5ec490; display:none; }
         .btn-checkout:disabled { background:#e5e7eb !important; color:#aaa !important; cursor:not-allowed; }
 
         /* 하단 그리드 */
@@ -241,7 +241,7 @@
     <div class="login-card">
         <div id="session-expired">⚠️ 세션(5분) 만료<br>페이지 새로고침 필요!</div>
         <div class="login-logo">Here</div>
-        <div class="login-sub">사하제일간호학원 실습 출결 관리</div>
+        <div class="login-sub">실습 출결 관리</div>
         <button class="btn-kakao" onclick="loginWithKakao()">카카오톡으로 시작하기</button>
         <p class="login-note">※ 휴대폰 변경 시 학원으로 연락!</p>
     </div>
@@ -257,8 +257,8 @@
 
     <div class="user-card">
         <div class="user-row">
-            <div>
-                <div class="u-name" id="user-name">이름</div>
+            <div style="text-align:center;">
+                <div class="u-name" id="user-name" style="font-size:24px;">이름</div>
                 <div class="u-hospital" id="user-hospital">병원명</div>
             </div>
             <div class="stat-circles">
@@ -325,17 +325,29 @@
     <div class="bottom-grid">
         <div class="grid-top">
             <button class="grid-main-btn" onclick="openSickLeaveModal()">
-                <div class="grid-img-wrap"><span>🏥</span></div>
-                <div class="grid-label">병가서류<br>제출</div>
+                <div class="grid-label" style="margin-bottom:6px;">병가서류<br>제출</div>
+                <div class="grid-img-wrap">
+                    <!-- 병가 이미지: img-sick src에 base64 붙여넣기 -->
+                    <img id="img-sick" src="" alt="병가" style="display:none;width:100%;height:100%;object-fit:contain;">
+                    <span class="grid-icon-fallback" id="icon-sick">🏥</span>
+                </div>
             </button>
             <button class="grid-main-btn" onclick="openCertModal()">
-                <div class="grid-img-wrap"><span>🎓</span></div>
-                <div class="grid-label">수강<br>증명서</div>
+                <div class="grid-label" style="margin-bottom:6px;">수강<br>증명서</div>
+                <div class="grid-img-wrap">
+                    <!-- 수강증명서 이미지: img-cert src에 base64 붙여넣기 -->
+                    <img id="img-cert" src="" alt="수강증명서" style="display:none;width:100%;height:100%;object-fit:contain;">
+                    <span class="grid-icon-fallback" id="icon-cert">🎓</span>
+                </div>
             </button>
             <button class="grid-main-btn" onclick="openLastInterval()">
                 <div class="bubble-wrap" id="sign-bubble"><div class="bubble">서명받기!</div></div>
-                <div class="grid-img-wrap"><span>✅</span></div>
-                <div class="grid-label">지난달<br>실습인증</div>
+                <div class="grid-label" style="margin-bottom:6px;">지난달<br>실습인증</div>
+                <div class="grid-img-wrap">
+                    <!-- 실습인증 이미지: img-cert2 src에 base64 붙여넣기 -->
+                    <img id="img-cert2" src="" alt="실습인증" style="display:none;width:100%;height:100%;object-fit:contain;">
+                    <span class="grid-icon-fallback" id="icon-cert2">✅</span>
+                </div>
             </button>
         </div>
         <div class="grid-bottom">
@@ -343,11 +355,6 @@
             <button class="grid-sub-btn" onclick="openHistoryModal('cert')">발급기록</button>
             <button class="grid-sub-btn" onclick="openNewStatusModal()">인증현황</button>
         </div>
-    </div>
-
-    <div id="interval-list-section" style="margin:8px 12px 0;background:#fff;border-radius:14px;border:1px solid #eee;padding:14px;">
-        <div class="section-title">📋 실습근무카드 현황</div>
-        <div id="interval-list"></div>
     </div>
 
     <div class="bottom-spacing"></div>
@@ -891,6 +898,7 @@
         document.getElementById('user-hospital').textContent = currentUser.hospital || '';
 
         setCharacter('egg');
+        loadGridImages();
 
         if (currentUser.intervals) {
             const hasPending = currentUser.intervals.some(i => i.status === 'available');
@@ -900,6 +908,22 @@
 
         // 출근 버튼 일단 표시 (상태확인 전)
         document.getElementById('check-in-btn').style.display = 'block';
+    }
+
+    // 그리드 이미지: src 있으면 이미지, 없으면 이모지 fallback
+    function loadGridImages() {
+        ['sick','cert','cert2'].forEach(key => {
+            const img  = document.getElementById('img-' + key);
+            const icon = document.getElementById('icon-' + key);
+            if (!img || !icon) return;
+            if (img.getAttribute('src') && img.getAttribute('src') !== '') {
+                img.style.display  = 'block';
+                icon.style.display = 'none';
+            } else {
+                img.style.display  = 'none';
+                icon.style.display = 'inline';
+            }
+        });
     }
 
     // ==================== 캐릭터 전환 ====================
