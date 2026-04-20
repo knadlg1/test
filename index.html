@@ -731,9 +731,11 @@ let missingManagerPhone = '';
         GPS_MAX_AGE: 0
     };
 
-    let currentUser = { kakaoId:null, name:null, hospital:null, hospitalLat:null, hospitalLon:null };
+        let currentUser = { kakaoId:null, name:null, hospital:null, hospitalLat:null, hospitalLon:null };
     let sessionTimer = null;
     let remainingTime = CONFIG.SESSION_DURATION;
+    let watchedPosition = null;
+    let gpsWatchId = null;
 
     Kakao.init(CONFIG.KAKAO_KEY);
 
@@ -751,11 +753,20 @@ let missingManagerPhone = '';
                     body: JSON.stringify({ action:'getKakaoUser', code, redirect_uri:'https://knadlg1.github.io/sahanurse-attendance/' })
                 });
                 const result = await response.json();
-                if (result.kakaoId) {
+                                if (result.kakaoId) {
                     currentUser.kakaoId = result.kakaoId;
                     localStorage.setItem('realKakaoId', result.kakaoId);
                     initializeSession();
-                    await verifyStudent();
+                    const cached = localStorage.getItem('cachedUserData');
+                    if (cached) {
+                        Object.assign(currentUser, JSON.parse(cached));
+                        showLoader(false);
+                        showMainSection();
+                        Promise.all([checkTodayStatus(), loadStudentStats()]);
+                        verifyStudent(true);
+                    } else {
+                        await verifyStudent();
+                    }
                 } else {
                     showLoader(false);
                     const savedId = localStorage.getItem('realKakaoId');
@@ -833,11 +844,10 @@ let missingManagerPhone = '';
         document.getElementById('main-section').style.display = 'none';
     }
 
-    // ==================== 학생 확인 ====================
-    async function verifyStudent() {
+        async function verifyStudent(silent = false) {
         try {
             const deviceId = generateDeviceId();
-            showLoader(true);
+            if (!silent) showLoader(true);
             const response = await fetchWithRetry(CONFIG.GAS_URL, {
                 body: JSON.stringify({ action:'checkStudent', kakaoId:currentUser.kakaoId, deviceId })
             });
@@ -851,16 +861,21 @@ let missingManagerPhone = '';
                 currentUser.hospitalLon = result.hospitalLon;
                 currentUser.intervals   = result.intervals;
                 sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                localStorage.setItem('cachedUserData', JSON.stringify(currentUser));
 
-                showLoader(false);
-                showMainSection();
-                checkTodayStatus();       // 출퇴근 버튼 빠르게
-                loadStudentStats();       // 통계는 뒤에
-
+                if (!silent) {
+                    showLoader(false);
+                    showMainSection();
+                    Promise.all([checkTodayStatus(), loadStudentStats()]);
+                } else {
+                    document.getElementById('user-name').textContent     = currentUser.name     || '';
+                    document.getElementById('user-hospital').textContent = currentUser.hospital || '';
+                }
             } else if (result.status === 'device_mismatch') {
-                showLoader(false);
+                if (!silent) showLoader(false);
                 alert('등록된 기기가 아닙니다.\n학원으로 문의해주세요.');
             } else {
+                if (silent) return;
                 showLoader(false);
                 const name = prompt('이름\n띄어쓰기,오타 주의!');
                 if (!name) { location.reload(); return; }
@@ -879,10 +894,11 @@ let missingManagerPhone = '';
                     currentUser.hospitalLat = regResult.hospitalLat || 35.0817;
                     currentUser.hospitalLon = regResult.hospitalLon || 128.9883;
                     sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    localStorage.setItem('cachedUserData', JSON.stringify(currentUser));
                     alert(`✅ ${currentUser.name}님 등록 완료!\n실습병원: ${currentUser.hospital}`);
                     showLoader(false);
                     showMainSection();
-                    setTimeout(() => { checkTodayStatus(); loadStudentStats(); }, 500);
+                    setTimeout(() => Promise.all([checkTodayStatus(), loadStudentStats()]), 500);
                 } else {
                     showLoader(false);
                     alert('❌ 등록 실패\n학원으로 문의해주세요.');
@@ -891,12 +907,13 @@ let missingManagerPhone = '';
             }
         } catch(error) {
             console.error('학생 확인 오류:', error);
-            showLoader(false);
+            if (!silent) showLoader(false);
         }
     }
 
     // ==================== 메인 화면 표시 ====================
-    function showMainSection() {
+        function showMainSection() {
+        startGpsWatch();
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('main-section').style.display = 'block';
         document.getElementById('user-name').textContent    = currentUser.name    || '';
@@ -1410,10 +1427,19 @@ let missingManagerPhone = '';
         });
     }
 
-    // ==================== 위치 ====================
+        // ==================== 위치 ====================
+    function startGpsWatch() {
+        if (!navigator.geolocation || gpsWatchId !== null) return;
+        gpsWatchId = navigator.geolocation.watchPosition(
+            pos => { watchedPosition = pos; },
+            () => {},
+            { enableHighAccuracy:true, maximumAge:10000, timeout:15000 }
+        );
+    }
     async function getCurrentPosition() {
         if (!navigator.geolocation) throw new Error('GPS 미지원');
-        return new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy:true, timeout:30000, maximumAge:0 }));
+        if (watchedPosition) return watchedPosition;
+        return new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy:true, timeout:10000, maximumAge:60000 }));
     }
     function calculateDistance(lat1,lon1,lat2,lon2) {
         const R=6371e3, φ1=lat1*Math.PI/180, φ2=lat2*Math.PI/180, Δφ=(lat2-lat1)*Math.PI/180, Δλ=(lon2-lon1)*Math.PI/180;
