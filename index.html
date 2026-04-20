@@ -95,7 +95,7 @@
         /* action-card */
         .action-card { background:#fff; margin:8px 12px 0; border-radius:14px; padding:14px; border:1px solid #eee; display:flex; align-items:center; gap:12px; }
         .char-col { display:flex; flex-direction:column; align-items:center; gap:6px; }
-        .char-box { width:96px; height:96px; border-radius:14px; background:#f4f2ff; display:flex; align-items:center; justify-content:center; border:1px dashed #c4b5fd; overflow:hidden; }
+        .char-box { width:96px; height:96px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; border:none; overflow:hidden; }
         .char-box img { width:100%; height:100%; object-fit:contain; }
         .char-placeholder { font-size:40px; }
         .new-status-badge { font-size:10px; font-weight:700; padding:3px 10px; border-radius:20px; background:#ede9fe; color:#6c63ff; white-space:nowrap; }
@@ -112,9 +112,12 @@
         .grid-top { display:grid; grid-template-columns:repeat(3,1fr); padding-top:16px; }
         .grid-main-btn { background:#fff; border:none; border-right:1px solid #f0f0f5; padding:0 4px 12px; cursor:pointer; text-align:center; position:relative; }
         .grid-main-btn:last-child { border-right:none; }
-        .grid-img-wrap { width:44px; height:44px; margin:0 auto 6px; border-radius:10px; background:#f4f2ff; display:flex; align-items:center; justify-content:center; }
+        .grid-main-btn:nth-child(1) { background:#fff0f3; }
+        .grid-main-btn:nth-child(2) { background:#f0f7ff; }
+        .grid-main-btn:nth-child(3) { background:#f0fff4; }
+        .grid-img-wrap { width:44px; height:44px; margin:0 auto 6px; border-radius:10px; background:rgba(255,255,255,0.6); display:flex; align-items:center; justify-content:center; }
         .grid-img-wrap span { font-size:22px; }
-        .grid-label { font-size:10px; font-weight:700; color:#222; line-height:1.4; }
+        .grid-label { font-size:13px; font-weight:700; color:#222; line-height:1.4; }
         .grid-bottom { display:grid; grid-template-columns:repeat(3,1fr); background:#f8f8fb; border-top:1px solid #f0f0f5; border-radius:0 0 14px 14px; }
         .grid-sub-btn { background:none; border:none; border-right:1px solid #f0f0f5; padding:9px 4px; cursor:pointer; font-size:10px; font-weight:600; color:#9096a2; }
         .grid-sub-btn:last-child { border-right:none; }
