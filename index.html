@@ -366,14 +366,16 @@
 
 <!-- ===================== 서명 섹션 (기존 유지) ===================== -->
 <div id="signature-section">
-    <div style="text-align:center;margin-bottom:20px;position:relative;">
+        <div style="text-align:center;margin-bottom:20px;position:relative;">
         <button onclick="goBackToMain()" style="position:absolute;left:0;top:0;background:none;border:none;font-size:15px;color:#64748b;cursor:pointer;font-weight:bold;padding:5px;">← 뒤로</button>
+        <button id="change-manager-btn" onclick="changeManager()" style="display:none;position:absolute;right:0;top:0;background:#f59e0b;color:#000;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">다른 담당자 서명</button>
         <h2 style="font-size:20px;color:#1e293b;margin-bottom:5px;">📋 실습근무카드</h2>
         <p id="sig-header-date" style="font-size:18px;color:#000;font-weight:800;letter-spacing:-0.5px;">데이터 불러오는 중...</p>
+        <p id="sig-auth-info" style="font-size:12px;font-weight:700;margin-top:4px;"></p>
     </div>
     <div class="record-list" id="record-list"></div>
         <button class="btn" id="mode-switch-btn" style="display:none;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:white;" onclick="showHandoverOverlay()">학생 서명완료 👉 담당자 서명받기</button>
-    <button class="btn" id="change-manager-btn" style="display:none;background:#f59e0b;color:white;" onclick="changeManager()">다른 담당자 인증/서명받기</button>
+    
     <button class="btn" id="final-submit-btn" style="background:#0f172a;color:white;display:none;" onclick="submitFinalSignature()">최종 서명 제출하기</button>
 </div>
 
@@ -1528,9 +1530,16 @@ let missingManagerPhone = '';
         currentMode = 'student';
         sigManagerMode = 'none';
         document.body.setAttribute('data-mode','student');
-        document.getElementById('change-manager-btn').style.display = 'none';
+                document.getElementById('change-manager-btn').style.display = 'none';
         document.getElementById('final-submit-btn').style.display   = 'none';
         document.getElementById('mode-switch-btn').style.display    = 'none';
+        document.getElementById('sig-auth-info').textContent        = '';
+    }
+    function formatPhone(p) {
+        p = String(p).replace(/[^0-9]/g, '');
+        if (p.length === 11) return p.slice(0,3)+'-'+p.slice(3,7)+'-'+p.slice(7);
+        if (p.length === 10) return p.slice(0,3)+'-'+p.slice(3,6)+'-'+p.slice(6);
+        return p;
     }
     async function loadMonthlyRecords(startDate, endDate) {
         showLoader(true);
@@ -1559,6 +1568,11 @@ let missingManagerPhone = '';
                 listDiv.innerHTML += `<div class="compact-record" data-record-idx="${idx}"><div class="compact-info"><div class="compact-date">${record.month}월 ${record.day}일 <span style="font-size:11px;${dayColor}">(${dayStr})</span></div><div class="compact-time">${record.checkIn} ~ ${record.checkOut} (${record.workHours})</div></div><div class="compact-sigs"><div class="compact-sig-box student-box"><div class="compact-label">학생</div><canvas class="compact-canvas student-canvas" onclick="handleSmallCanvasTouch(this)"></canvas><button class="mini-clear-btn" onclick="clearSmallCanvas(this)">X</button></div><div class="compact-sig-box manager-box"><div class="compact-label">담당자</div><canvas class="compact-canvas manager-canvas" onclick="handleSmallCanvasTouch(this)"></canvas><button class="mini-clear-btn" onclick="clearSmallCanvas(this)">X</button></div></div></div>`;
             }
         });
+                const allAbsent = currentRecordData.every(r => r.isAbsent);
+        if (allAbsent) {
+            listDiv.innerHTML += '<p style="text-align:center;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;color:#16a34a;font-weight:700;font-size:13px;">✅ 이 기간 근무 기록이 없어 서명이 필요하지 않습니다.</p>';
+            return;
+        }
         document.getElementById('mode-switch-btn').style.display = 'block';
     }
 
@@ -1630,9 +1644,11 @@ let missingManagerPhone = '';
             sigOtpPhone = phone;
             currentMode = 'manager';
             document.body.setAttribute('data-mode', 'manager');
-            document.getElementById('mode-switch-btn').style.display = 'none';
+                        document.getElementById('mode-switch-btn').style.display = 'none';
             document.getElementById('change-manager-btn').style.display = 'block';
             document.getElementById('final-submit-btn').style.display = 'block';
+            document.getElementById('sig-auth-info').style.color = '#16a34a';
+            document.getElementById('sig-auth-info').textContent = '📱 ' + formatPhone(phone) + ' 인증✓';
         });
     }
         function submitFinalSignature() {
@@ -1877,8 +1893,10 @@ let missingManagerPhone = '';
                     if (clearBtn) clearBtn.style.display = 'none';
                 }
             });
-            sigManagerMode = 'B';
+                        sigManagerMode = 'B';
             sigOtpPhone = phone;
+            document.getElementById('sig-auth-info').style.color = '#2563eb';
+            document.getElementById('sig-auth-info').textContent = '📱 ' + formatPhone(phone) + ' 인증✓';
         });
     }
 
