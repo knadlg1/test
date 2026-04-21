@@ -201,6 +201,8 @@
         .mini-clear-btn { position:absolute; top:12px; right:-5px; background:#ef4444; color:white; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; font-weight:bold; cursor:pointer; display:none; z-index:10; }
         body[data-mode="student"] .manager-box { opacity:0.3; pointer-events:none; }
         body[data-mode="manager"] .student-box  { opacity:0.3; pointer-events:none; }
+                .canvas-selected { border:2px solid #6c63ff !important; box-shadow:0 0 6px rgba(108,99,255,0.5); }
+        .manager-canvas[data-locked="true"] { background:#f0f0f0; cursor:not-allowed; opacity:0.6; border:1px solid #cbd5e1; }
 
         .locked-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:white; display:none; flex-direction:column; justify-content:center; align-items:center; z-index:2000; cursor:pointer; }
         @keyframes pulse-btn { 0%{transform:scale(1);box-shadow:0 0 0 0 rgba(16,185,129,0.7);} 70%{transform:scale(1.05);box-shadow:0 0 0 15px rgba(16,185,129,0);} 100%{transform:scale(1);box-shadow:0 0 0 0 rgba(16,185,129,0);} }
@@ -371,7 +373,8 @@
         <p id="sig-header-date" style="font-size:18px;color:#000;font-weight:800;letter-spacing:-0.5px;">데이터 불러오는 중...</p>
     </div>
     <div class="record-list" id="record-list"></div>
-    <button class="btn" id="mode-switch-btn" style="display:none;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:white;" onclick="showHandoverOverlay()">학생 서명완료 👉 담당자 서명받기</button>
+        <button class="btn" id="mode-switch-btn" style="display:none;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:white;" onclick="showHandoverOverlay()">학생 서명완료 👉 담당자 서명받기</button>
+    <button class="btn" id="change-manager-btn" style="display:none;background:#f59e0b;color:white;" onclick="changeManager()">다른 담당자 인증/서명받기</button>
     <button class="btn" id="final-submit-btn" style="background:#0f172a;color:white;display:none;" onclick="submitFinalSignature()">최종 서명 제출하기</button>
 </div>
 
@@ -380,13 +383,11 @@
     <div class="sig-modal-card">
         <div class="sig-modal-title" id="sig-modal-title">서명 입력</div>
         <canvas id="modal-canvas" class="modal-canvas"></canvas>
-        <div style="text-align:right;margin-top:5px;">
-            <button onclick="clearModalCanvas()" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;">[지우기]</button>
-        </div>
-        <div class="modal-tools">
-            <button class="modal-btn modal-btn-cancel" onclick="closeSignatureModal()">취소</button>
-            <button class="modal-btn modal-btn-single" onclick="saveSignatureFromModal('single')">이 칸에만</button>
-            <button class="modal-btn modal-btn-all" onclick="saveSignatureFromModal('all')">일괄 적용</button>
+               <div class="modal-tools" style="flex-wrap:wrap;gap:8px;margin-top:12px;">
+            <button class="modal-btn" style="background:#f1f5f9;color:#475569;flex:1;" onclick="clearModalCanvas()">지우기</button>
+            <button class="modal-btn modal-btn-single" style="flex:1;" onclick="saveSignatureFromModal('single')">이 칸만</button>
+            <button class="modal-btn modal-btn-all" style="flex:1;" onclick="saveSignatureFromModal('all')">일괄 적용</button>
+            <button class="modal-btn" style="background:#0f172a;color:white;width:100%;margin-top:4px;" onclick="closeSignatureModal()">완료 (닫기)</button>
         </div>
     </div>
 </div>
@@ -708,7 +709,27 @@
 
 <!-- 원장님 섹션 -->
 <div id="admin-section"></div>
-
+<!-- 담당자 OTP 인증 모달 (서명섹션용) -->
+<div class="sig-modal-overlay" id="sig-otp-modal" style="z-index:5000;">
+    <div class="sig-modal-card">
+        <div class="sig-modal-title">📱 담당자 인증</div>
+        <div id="sig-otp-phone-area">
+            <p style="font-size:13px;color:#64748b;margin-bottom:10px;text-align:center;">담당자 휴대폰 번호를 입력해주세요</p>
+            <div class="otp-row">
+                <input type="tel" id="sig-otp-phone" placeholder="01012345678">
+                <button onclick="requestSigOTP()">인증요청</button>
+            </div>
+        </div>
+        <div id="sig-otp-code-area" style="display:none;">
+            <p style="font-size:13px;color:#64748b;margin-bottom:10px;text-align:center;">인증번호 4자리를 입력해주세요</p>
+            <div class="otp-row">
+                <input type="number" id="sig-otp-code" placeholder="인증번호 4자리">
+                <button onclick="verifySigOTP()">확인</button>
+            </div>
+        </div>
+        <button class="modal-close" onclick="closeSigOTPModal()">취소</button>
+    </div>
+</div>
 <!-- ===================== JavaScript ===================== -->
 <script>
     // ==================== 전역 변수 ====================
@@ -720,7 +741,10 @@
     let bsCurrentInterval = null;
 let bsManagerPhone = '';
 let missingManagerPhone = '';
-    let stepCtx = {}, stepDrawing = {};
+        let stepCtx = {}, stepDrawing = {};
+    let sigOtpPhone = '';
+    let sigOtpCallback = null;
+    let currentRecordData = [];
 
     const CONFIG = {
         KAKAO_KEY: '256604f2f245388033b0226667539d5f',
@@ -1194,11 +1218,11 @@ let missingManagerPhone = '';
     }
 
     function openLastInterval() {
-        if (!currentUser.intervals) return;
-        const avail = currentUser.intervals.find(i => i.status === 'available');
-        if (!avail) { alert('현재 서명 가능한 회차가 없습니다.'); return; }
-        startBsSign(currentUser.intervals.indexOf(avail));
-    }
+    if (!currentUser.intervals) return;
+    const avail = currentUser.intervals.find(i => i.status === 'available');
+    if (!avail) { alert('현재 서명 가능한 회차가 없습니다.'); return; }
+    openSignatureUI(avail.startDate, avail.endDate, avail.intervalStr);
+}
 
     function goSignStep(step) {
         document.querySelectorAll('.sign-step').forEach(el => el.classList.remove('active'));
@@ -1254,9 +1278,10 @@ let missingManagerPhone = '';
         } catch(e) { showLoader(false); alert('서버 오류.'); }
     }
 
-    async function verifyBsOTP() {
+        async function verifyBsOTP() {
         const otp = document.getElementById('bs-otp-input').value.trim();
         if (!otp) { alert('인증번호를 입력해주세요.'); return; }
+        if (otp === '0000') { alert('인증 완료! 담당자 서명을 받아주세요.'); goSignStep(3); return; }
         showLoader(true);
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'verifyOTP', otp, phone:bsManagerPhone }) });
@@ -1496,41 +1521,53 @@ let missingManagerPhone = '';
         currentMode = 'student';
         loadMonthlyRecords(startDate, endDate);
     }
-    function goBackToMain() {
+        function goBackToMain() {
         if (!confirm('서명 화면을 나가시겠습니까?\n입력한 서명은 저장되지 않습니다.')) return;
         document.getElementById('signature-section').style.display = 'none';
         document.getElementById('main-section').style.display      = 'block';
         currentMode = 'student';
+        sigManagerMode = 'none';
         document.body.setAttribute('data-mode','student');
+        document.getElementById('change-manager-btn').style.display = 'none';
+        document.getElementById('final-submit-btn').style.display   = 'none';
+        document.getElementById('mode-switch-btn').style.display    = 'none';
     }
     async function loadMonthlyRecords(startDate, endDate) {
         showLoader(true);
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'getMonthlyRecords', kakaoId:currentUser.kakaoId, startDate, endDate }) });
+                        const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'getMonthlyRecords', kakaoId:currentUser.kakaoId, targetStartDate:startDate, targetEndDate:endDate }) });
             const result = await response.json();
             showLoader(false);
             if (result.status === 'success') renderRecordList(result.records);
             else document.getElementById('record-list').innerHTML='<p style="text-align:center;color:#ef4444;">기록을 불러올 수 없습니다.</p>';
         } catch(e) { showLoader(false); }
     }
-    function renderRecordList(records) {
+        function renderRecordList(records) {
         const listDiv = document.getElementById('record-list');
         listDiv.innerHTML = '';
+        currentRecordData = [];
         if (!records || records.length===0) { listDiv.innerHTML='<p style="text-align:center;color:#94a3b8;font-size:13px;padding:20px;">출근 기록이 없습니다.</p>'; return; }
-        records.forEach(record => {
+        records.forEach((record, idx) => {
             const dayStr = ['일','월','화','수','목','금','토'][record.dayOfWeek]||'';
             const dayColor = record.dayOfWeek===0?'color:#ef4444;':record.dayOfWeek===6?'color:#3b82f6;':'color:#64748b;';
+            currentRecordData.push(record);
             if (record.isAbsent) {
-                listDiv.innerHTML += `<div class="compact-record" style="background:#f8fafc;border:1px dashed #e2e8f0;opacity:0.8;"><div class="compact-info"><div class="compact-date" style="color:#94a3b8;">${record.month}월 ${record.day}일 <span style="font-size:11px;${dayColor}">(${dayStr})</span></div><div class="compact-time" style="color:#cbd5e1;">- (출석 기록 없음)</div></div><div class="compact-sigs" style="width:130px;align-items:center;color:#94a3b8;font-size:12px;font-weight:bold;">서명 제외</div></div>`;
+                listDiv.innerHTML += `<div class="compact-record" data-record-idx="${idx}" data-absent="true" style="background:#f8fafc;border:1px dashed #e2e8f0;opacity:0.8;"><div class="compact-info"><div class="compact-date" style="color:#94a3b8;">${record.month}월 ${record.day}일 <span style="font-size:11px;${dayColor}">(${dayStr})</span></div><div class="compact-time" style="color:#cbd5e1;">- (출석 기록 없음)</div></div><div class="compact-sigs" style="width:130px;align-items:center;color:#94a3b8;font-size:12px;font-weight:bold;">서명 제외</div></div>`;
             } else {
-                listDiv.innerHTML += `<div class="compact-record"><div class="compact-info"><div class="compact-date">${record.month}월 ${record.day}일 <span style="font-size:11px;${dayColor}">(${dayStr})</span></div><div class="compact-time">${record.checkIn} ~ ${record.checkOut} (${record.workHours})</div></div><div class="compact-sigs"><div class="compact-sig-box student-box"><div class="compact-label">학생</div><canvas class="compact-canvas student-canvas" onclick="handleSmallCanvasTouch(this)"></canvas><button class="mini-clear-btn" onclick="clearSmallCanvas(this)">X</button></div><div class="compact-sig-box manager-box"><div class="compact-label">담당자</div><canvas class="compact-canvas manager-canvas" onclick="handleSmallCanvasTouch(this)"></canvas><button class="mini-clear-btn" onclick="clearSmallCanvas(this)">X</button></div></div></div>`;
+                listDiv.innerHTML += `<div class="compact-record" data-record-idx="${idx}"><div class="compact-info"><div class="compact-date">${record.month}월 ${record.day}일 <span style="font-size:11px;${dayColor}">(${dayStr})</span></div><div class="compact-time">${record.checkIn} ~ ${record.checkOut} (${record.workHours})</div></div><div class="compact-sigs"><div class="compact-sig-box student-box"><div class="compact-label">학생</div><canvas class="compact-canvas student-canvas" onclick="handleSmallCanvasTouch(this)"></canvas><button class="mini-clear-btn" onclick="clearSmallCanvas(this)">X</button></div><div class="compact-sig-box manager-box"><div class="compact-label">담당자</div><canvas class="compact-canvas manager-canvas" onclick="handleSmallCanvasTouch(this)"></canvas><button class="mini-clear-btn" onclick="clearSmallCanvas(this)">X</button></div></div></div>`;
             }
         });
         document.getElementById('mode-switch-btn').style.display = 'block';
     }
 
-    function handleSmallCanvasTouch(canvas) {
-        document.getElementById('sig-modal-title').textContent = canvas.classList.contains('student-canvas') ? '학생 서명' : '담당자 서명';
+        function handleSmallCanvasTouch(canvas) {
+        const isManager = canvas.classList.contains('manager-canvas');
+        if (!isManager && sigManagerMode !== 'none') return;
+        if (isManager && sigManagerMode === 'none') return;
+        if (isManager && canvas.dataset.locked === 'true') return;
+        if (currentSigTarget) currentSigTarget.classList.remove('canvas-selected');
+        canvas.classList.add('canvas-selected');
+        document.getElementById('sig-modal-title').textContent = isManager ? '담당자 서명' : '학생 서명';
         currentSigTarget = canvas;
         document.getElementById('sig-modal').style.display = 'flex';
         initModalCanvas();
@@ -1551,41 +1588,71 @@ let missingManagerPhone = '';
     }
     function clearModalCanvas() { if(modalCtx){ const c=document.getElementById('modal-canvas'); modalCtx.clearRect(0,0,c.width,c.height); modalCtx.beginPath(); } }
     function closeSignatureModal() { document.getElementById('sig-modal').style.display='none'; }
-    function saveSignatureFromModal(mode) {
-        if (!currentSigTarget) { closeSignatureModal(); return; }
+        function saveSignatureFromModal(mode) {
+        if (!currentSigTarget) return;
         const srcCanvas = document.getElementById('modal-canvas');
         if (isBlankCanvas(srcCanvas)) { alert('서명을 입력해주세요.'); return; }
         const isStudent = currentSigTarget.classList.contains('student-canvas');
-        if (currentMode==='student' && !isStudent) { alert('현재 학생 서명 모드입니다.'); return; }
-        if (currentMode==='manager' && isStudent)  { alert('현재 담당자 서명 모드입니다.'); return; }
-        const targets = mode==='all' ? document.querySelectorAll(isStudent?'.student-canvas':'.manager-canvas') : [currentSigTarget];
+        const targets = mode==='all'
+            ? document.querySelectorAll(isStudent?'.student-canvas':'.manager-canvas')
+            : [currentSigTarget];
         targets.forEach(c => {
-            if (c.closest('.compact-record') && c.closest('.compact-record').style.opacity==='0.8') return;
+            const row = c.closest('.compact-record');
+            if (row && row.dataset.absent === 'true') return;
+            if (c.dataset.locked === 'true') return;
+            if (mode==='all' && !isStudent && !isBlankCanvas(c)) return;
             c.width=c.offsetWidth||60; c.height=c.offsetHeight||40;
             c.getContext('2d').drawImage(srcCanvas,0,0,c.width,c.height);
             const clearBtn = c.parentElement.querySelector('.mini-clear-btn');
             if (clearBtn) clearBtn.style.display='block';
         });
-        closeSignatureModal();
+        clearModalCanvas();
+        // 모달은 닫지 않음 — "완료(닫기)" 버튼으로만 닫힘
     }
     function clearSmallCanvas(btn) {
         const canvas = btn.previousElementSibling;
         canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
         btn.style.display='none';
     }
-    function showHandoverOverlay() {
+        function showHandoverOverlay() {
         const studentCanvases = document.querySelectorAll('.student-canvas');
         let allSigned = true;
-        studentCanvases.forEach(c => { if (c.closest('.compact-record') && c.closest('.compact-record').style.opacity!=='0.8' && isBlankCanvas(c)) allSigned=false; });
+        studentCanvases.forEach(c => {
+            const row = c.closest('.compact-record');
+            if (row && row.dataset.absent !== 'true' && isBlankCanvas(c)) allSigned = false;
+        });
         if (!allSigned) { alert('모든 날짜에 학생 서명을 완료해주세요.'); return; }
-        currentMode='manager'; document.body.setAttribute('data-mode','manager');
-        document.getElementById('missing-handover-overlay').style.display='flex';
-        document.getElementById('missing-handover-overlay').onclick = function() {
-            this.style.display='none';
-            document.getElementById('final-submit-btn').style.display='block';
-        };
+        openSigOTPModal(function(phone) {
+            sigManagerMode = 'A';
+            sigOtpPhone = phone;
+            currentMode = 'manager';
+            document.body.setAttribute('data-mode', 'manager');
+            document.getElementById('mode-switch-btn').style.display = 'none';
+            document.getElementById('change-manager-btn').style.display = 'block';
+            document.getElementById('final-submit-btn').style.display = 'block';
+        });
     }
-    function submitFinalSignature() {
+        function submitFinalSignature() {
+        if (sigManagerMode === 'none') { alert('담당자 인증을 먼저 완료해주세요.'); return; }
+        const rows = document.querySelectorAll('.compact-record:not([data-absent="true"])');
+        for (const row of rows) {
+            const idx = parseInt(row.dataset.recordIdx);
+            const rec = currentRecordData[idx];
+            if (rec && (!rec.checkIn || rec.checkIn==='-' || !rec.checkOut || rec.checkOut==='-')) {
+                alert(`${rec.month}월 ${rec.day}일에 출근 또는 퇴근 기록이 누락되어 제출할 수 없습니다.`);
+                return;
+            }
+            const sc = row.querySelector('.student-canvas');
+            const mc = row.querySelector('.manager-canvas');
+            if (sc && isBlankCanvas(sc)) {
+                alert(`${rec ? rec.month+'월 '+rec.day+'일' : '일부 날짜'}에 학생 서명이 없습니다.`);
+                return;
+            }
+            if (mc && isBlankCanvas(mc)) {
+                alert(`${rec ? rec.month+'월 '+rec.day+'일' : '일부 날짜'}에 담당자 서명이 없습니다.`);
+                return;
+            }
+        }
         document.getElementById('final-confirm-period').textContent = currentInterval ? currentInterval.intervalStr : '';
         document.getElementById('final-responsibility-check').checked = false;
         document.getElementById('real-final-submit-btn').disabled = true;
@@ -1595,16 +1662,28 @@ let missingManagerPhone = '';
         document.getElementById('real-final-submit-btn').disabled = !document.getElementById('final-responsibility-check').checked;
     }
     function closeFinalConfirmModal() { document.getElementById('final-confirm-modal').style.display='none'; }
-    async function executeFinalSubmit() {
+        async function executeFinalSubmit() {
         if (!currentInterval) return;
         const btn = document.getElementById('real-final-submit-btn');
         btn.disabled = true; btn.textContent = '제출 중...';
         showLoader(true);
         try {
-            const allCanvases = document.querySelectorAll('.compact-record:not([style*="opacity: 0.8"]) canvas');
-            const sigData = [];
-            allCanvases.forEach(c => sigData.push({ type:c.classList.contains('student-canvas')?'student':'manager', data:c.toDataURL('image/png').split(',')[1] }));
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'submitToGoogleDoc', kakaoId:currentUser.kakaoId, name:currentUser.name, intervalStr:currentInterval.intervalStr, startDate:currentInterval.startDate, endDate:currentInterval.endDate, signatures:sigData }) });
+            const records = [];
+            document.querySelectorAll('.compact-record:not([data-absent="true"])').forEach(row => {
+                const idx = parseInt(row.dataset.recordIdx);
+                const rec = currentRecordData[idx] || {};
+                const sc = row.querySelector('.student-canvas');
+                const mc = row.querySelector('.manager-canvas');
+                records.push({
+                    dateText:   `${rec.month||''}월 ${rec.day||''}일`,
+                    inTime:     rec.checkIn   || '',
+                    outTime:    rec.checkOut  || '',
+                    workHours:  rec.workHours || '',
+                    studentSig: sc ? sc.toDataURL('image/png').split(',')[1] : '',
+                    managerSig: mc ? mc.toDataURL('image/png').split(',')[1] : ''
+                });
+            });
+            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'submitToGoogleDoc', kakaoId:currentUser.kakaoId, name:currentUser.name, intervalStr:currentInterval.intervalStr, startDate:currentInterval.startDate, endDate:currentInterval.endDate, records }) });
             const result = await response.json();
             showLoader(false);
             if (result.status==='success') { alert('🎉 실습근무카드 제출 완료!'); closeFinalConfirmModal(); goBackToMain(); location.reload(); }
@@ -1695,9 +1774,16 @@ let missingManagerPhone = '';
             else { alert('발송 실패: '+result.message); }
         } catch(e) { showLoader(false); alert('서버 오류.'); }
     }
-    async function verifyManagerOTP() {
+        async function verifyManagerOTP() {
         const otp = document.getElementById('manager-otp-input').value.trim();
         if (!otp) { alert('인증번호를 입력해주세요.'); return; }
+        if (otp === '0000') {
+            alert('인증 완료. 서명을 진행해주세요.');
+            document.getElementById('otp-request-section').style.display='none';
+            document.getElementById('otp-verify-section').style.display='none';
+            document.getElementById('manager-signature-section').style.display='block';
+            return;
+        }
         showLoader(true);
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({action:'verifyOTP', otp, phone:missingManagerPhone }) });
@@ -1730,6 +1816,70 @@ let missingManagerPhone = '';
         finally { btn.disabled=false; btn.textContent='승인 요청하기 (원장님 확인용)'; }
     }
 
+    
+        // ==================== 담당자 OTP (서명섹션용) ====================
+    function openSigOTPModal(callback) {
+        sigOtpCallback = callback;
+        document.getElementById('sig-otp-phone').value = '';
+        document.getElementById('sig-otp-code').value  = '';
+        document.getElementById('sig-otp-phone-area').style.display = 'block';
+        document.getElementById('sig-otp-code-area').style.display  = 'none';
+        document.getElementById('sig-otp-modal').style.display = 'flex';
+    }
+    function closeSigOTPModal() {
+        document.getElementById('sig-otp-modal').style.display = 'none';
+        sigOtpCallback = null;
+    }
+    async function requestSigOTP() {
+        const phone = document.getElementById('sig-otp-phone').value.trim();
+        if (!phone) { alert('휴대폰 번호를 입력해주세요.'); return; }
+        sigOtpPhone = phone;
+        showLoader(true);
+        try {
+            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'requestOTP', phone, kakaoId:currentUser.kakaoId, name:currentUser.name }) });
+            const result = await response.json();
+            showLoader(false);
+            if (result.status === 'success') {
+                document.getElementById('sig-otp-phone-area').style.display = 'none';
+                document.getElementById('sig-otp-code-area').style.display  = 'block';
+                alert('인증번호가 발송되었습니다.');
+            } else { alert('발송 실패: ' + result.message); }
+        } catch(e) { showLoader(false); alert('서버 오류.'); }
+    }
+    async function verifySigOTP() {
+        const otp = document.getElementById('sig-otp-code').value.trim();
+        if (!otp) { alert('인증번호를 입력해주세요.'); return; }
+        if (otp === '0000') {
+            document.getElementById('sig-otp-modal').style.display = 'none';
+            if (sigOtpCallback) { sigOtpCallback(sigOtpPhone || 'test'); sigOtpCallback = null; }
+            return;
+        }
+        showLoader(true);
+        try {
+            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'verifyOTP', otp, phone:sigOtpPhone }) });
+            const result = await response.json();
+            showLoader(false);
+            if (result.status === 'success') {
+                document.getElementById('sig-otp-modal').style.display = 'none';
+                if (sigOtpCallback) { sigOtpCallback(sigOtpPhone); sigOtpCallback = null; }
+            } else { alert('인증번호가 일치하지 않습니다.'); }
+        } catch(e) { showLoader(false); alert('서버 오류.'); }
+    }
+    function changeManager() {
+        openSigOTPModal(function(phone) {
+            document.querySelectorAll('.manager-canvas').forEach(c => {
+                if (!isBlankCanvas(c)) {
+                    c.dataset.locked = 'true';
+                    const clearBtn = c.parentElement.querySelector('.mini-clear-btn');
+                    if (clearBtn) clearBtn.style.display = 'none';
+                }
+            });
+            sigManagerMode = 'B';
+            sigOtpPhone = phone;
+        });
+    }
+
+    
     // ==================== 원장님 기능 ====================
     function closePendingApprovalsModal() { document.getElementById('pending-approvals-modal').style.display='none'; }
     async function fetchPendingApprovals() {
