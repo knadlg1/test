@@ -177,9 +177,8 @@
         }
         .urgent-banner { display:none; background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%); color:white; padding:16px; border-radius:12px; margin:8px 12px 0; text-align:center; font-weight:bold; font-size:15px; cursor:pointer; animation:urgentPulse 2s infinite; }
 
-        /* ===================== 기존 팝업 스타일 유지 ===================== */
-        .sig-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:3000; display:none; justify-content:center; align-items:center; padding:20px; backdrop-filter:blur(2px); }
-        .sig-modal-card { background:white; width:100%; max-width:380px; border-radius:16px; padding:20px; box-shadow:0 20px 40px rgba(0,0,0,0.2); }
+                .sig-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:3000; display:none; justify-content:center; align-items:flex-end; backdrop-filter:blur(2px); }
+        .sig-modal-card { background:white; width:100%; max-width:480px; border-radius:20px 20px 0 0; padding:20px 16px 34px; max-height:85vh; overflow-y:auto; box-shadow:0 -4px 20px rgba(0,0,0,0.15); }
         .sig-modal-title { font-size:16px; font-weight:bold; color:#1e293b; text-align:center; margin-bottom:15px; }
         .modal-canvas { border:2px dashed #94a3b8; border-radius:8px; background:#f8fafc; width:100%; height:180px; touch-action:none; cursor:crosshair; display:block; }
         .modal-tools { display:flex; justify-content:space-between; margin-top:15px; gap:10px; }
@@ -383,11 +382,15 @@
     <div class="sig-modal-card">
         <div class="sig-modal-title" id="sig-modal-title">서명 입력</div>
         <canvas id="modal-canvas" class="modal-canvas"></canvas>
-               <div class="modal-tools" style="flex-wrap:wrap;gap:8px;margin-top:12px;">
-            <button class="modal-btn" style="background:#f1f5f9;color:#475569;flex:1;" onclick="clearModalCanvas()">지우기</button>
-            <button class="modal-btn modal-btn-single" style="flex:1;" onclick="saveSignatureFromModal('single')">이 칸만</button>
-            <button class="modal-btn modal-btn-all" style="flex:1;" onclick="saveSignatureFromModal('all')">일괄 적용</button>
-            <button class="modal-btn" style="background:#0f172a;color:white;width:100%;margin-top:4px;" onclick="closeSignatureModal()">완료 (닫기)</button>
+                       <div style="margin-top:12px;">
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <button class="modal-btn" style="background:#f1f5f9;color:#475569;flex:1;" onclick="clearModalCanvas()">지우기</button>
+                <button class="modal-btn" style="background:#0f172a;color:white;flex:1;" onclick="closeSignatureModal()">완료 (닫기)</button>
+            </div>
+            <div class="modal-tools" style="gap:8px;">
+                <button class="modal-btn modal-btn-single" style="flex:1;" onclick="saveSignatureFromModal('single')">이 칸만</button>
+                <button class="modal-btn modal-btn-all" style="flex:1;" onclick="saveSignatureFromModal('all')">일괄 적용</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1417,11 +1420,10 @@ let missingManagerPhone = '';
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'getHistory', kakaoId:currentUser.kakaoId, type }) });
             const result = await response.json();
             const listEl = document.getElementById('history-bottom-list');
-            if (result.status==='success' && result.records && result.records.length>0) {
+                        if (result.status==='success' && result.data && result.data.length>0) {
                 listEl.innerHTML = '';
-                result.records.forEach(rec => {
-                    const statusClass = ['완료','발급완료','승인'].includes(rec.status) ? 'rs-done' : 'rs-wait';
-                                        listEl.innerHTML += `<div class="record-row"><div><div class="record-label">${rec.label||''}</div><div class="record-date">${shortDate(rec.date||'')}</div></div><span class="record-status ${statusClass}">${rec.status||''}</span></div>`;
+                result.data.forEach(rec => {
+                    listEl.innerHTML += `<div class="record-row"><div><div class="record-label">${rec.desc||''}</div><div class="record-date">${rec.date||''}</div></div><span class="record-status rs-done">완료</span></div>`;
                 });
             } else {
                 listEl.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:13px;padding:20px;">내역이 없습니다.</div>';
@@ -1551,8 +1553,10 @@ let missingManagerPhone = '';
             const dayStr = ['일','월','화','수','목','금','토'][record.dayOfWeek]||'';
             const dayColor = record.dayOfWeek===0?'color:#ef4444;':record.dayOfWeek===6?'color:#3b82f6;':'color:#64748b;';
             currentRecordData.push(record);
-            if (record.isAbsent) {
+                        if (record.isAbsent) {
                 listDiv.innerHTML += `<div class="compact-record" data-record-idx="${idx}" data-absent="true" style="background:#f8fafc;border:1px dashed #e2e8f0;opacity:0.8;"><div class="compact-info"><div class="compact-date" style="color:#94a3b8;">${record.month}월 ${record.day}일 <span style="font-size:11px;${dayColor}">(${dayStr})</span></div><div class="compact-time" style="color:#cbd5e1;">- (출석 기록 없음)</div></div><div class="compact-sigs" style="width:130px;align-items:center;color:#94a3b8;font-size:12px;font-weight:bold;">서명 제외</div></div>`;
+            } else if (record.isHoliday) {
+                listDiv.innerHTML += `<div class="compact-record" data-record-idx="${idx}" data-absent="true" style="background:#fffbeb;border:1px dashed #fcd34d;opacity:0.9;"><div class="compact-info"><div class="compact-date" style="color:#92400e;">${record.month}월 ${record.day}일 <span style="font-size:11px;${dayColor}">(${dayStr})</span></div><div class="compact-time" style="color:#78350f;">${record.checkIn} ~ ${record.checkOut} (${record.workHours})</div></div><div class="compact-sigs" style="width:130px;align-items:center;color:#d97706;font-size:11px;font-weight:bold;">🏖 공휴일/주말<br><span style="font-size:10px;">서명 불필요</span></div></div>`;
             } else {
                 listDiv.innerHTML += `<div class="compact-record" data-record-idx="${idx}"><div class="compact-info"><div class="compact-date">${record.month}월 ${record.day}일 <span style="font-size:11px;${dayColor}">(${dayStr})</span></div><div class="compact-time">${record.checkIn} ~ ${record.checkOut} (${record.workHours})</div></div><div class="compact-sigs"><div class="compact-sig-box student-box"><div class="compact-label">학생</div><canvas class="compact-canvas student-canvas" onclick="handleSmallCanvasTouch(this)"></canvas><button class="mini-clear-btn" onclick="clearSmallCanvas(this)">X</button></div><div class="compact-sig-box manager-box"><div class="compact-label">담당자</div><canvas class="compact-canvas manager-canvas" onclick="handleSmallCanvasTouch(this)"></canvas><button class="mini-clear-btn" onclick="clearSmallCanvas(this)">X</button></div></div></div>`;
             }
@@ -1606,8 +1610,8 @@ let missingManagerPhone = '';
             const clearBtn = c.parentElement.querySelector('.mini-clear-btn');
             if (clearBtn) clearBtn.style.display='block';
         });
-        clearModalCanvas();
-        // 모달은 닫지 않음 — "완료(닫기)" 버튼으로만 닫힘
+                if (mode === 'all') closeSignatureModal();
+        // 'single'은 캔버스 유지 — 다른 칸 눌러서 계속 적용 가능
     }
     function clearSmallCanvas(btn) {
         const canvas = btn.previousElementSibling;
