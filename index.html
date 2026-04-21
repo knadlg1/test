@@ -380,17 +380,15 @@
 <!-- ===================== 팝업 서명 패드 (기존) ===================== -->
 <div class="sig-modal-overlay" id="sig-modal">
     <div class="sig-modal-card">
-        <div class="sig-modal-title" id="sig-modal-title">서명 입력</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;">
+            <button onclick="clearModalCanvas()" style="background:none;border:none;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;padding:4px 8px;">지우기</button>
+            <div class="sig-modal-title" style="margin:0;" id="sig-modal-title">서명 입력</div>
+            <button onclick="closeSignatureModal()" style="background:none;border:none;color:#6c63ff;font-size:12px;font-weight:700;cursor:pointer;padding:4px 8px;">완료</button>
+        </div>
         <canvas id="modal-canvas" class="modal-canvas"></canvas>
-                       <div style="margin-top:12px;">
-            <div style="display:flex;gap:8px;margin-bottom:8px;">
-                <button class="modal-btn" style="background:#f1f5f9;color:#475569;flex:1;" onclick="clearModalCanvas()">지우기</button>
-                <button class="modal-btn" style="background:#0f172a;color:white;flex:1;" onclick="closeSignatureModal()">완료 (닫기)</button>
-            </div>
-            <div class="modal-tools" style="gap:8px;">
-                <button class="modal-btn modal-btn-single" style="flex:1;" onclick="saveSignatureFromModal('single')">이 칸만</button>
-                <button class="modal-btn modal-btn-all" style="flex:1;" onclick="saveSignatureFromModal('all')">일괄 적용</button>
-            </div>
+        <div class="modal-tools" style="gap:8px;margin-top:12px;">
+            <button class="modal-btn modal-btn-single" style="flex:1;" onclick="saveSignatureFromModal('single')">이 칸만</button>
+            <button class="modal-btn modal-btn-all" style="flex:1;" onclick="saveSignatureFromModal('all')">일괄 적용</button>
         </div>
     </div>
 </div>
@@ -751,7 +749,7 @@ let missingManagerPhone = '';
 
     const CONFIG = {
         KAKAO_KEY: '256604f2f245388033b0226667539d5f',
-        GAS_URL: 'https://script.google.com/macros/s/AKfycbxyxJnHRaj0Sfb7YNnQ-PqwMwrdcnlU5q8JsSQw23ijID0W2b3UA2i_HUzOhVwWgVUqSg/exec',
+        GAS_URL: 'https://script.google.com/macros/s/AKfycbwfcheN2Koqy6QtiR5hSLNWFOGfsNrRuTneKltyffiTF-kJbcTIbbX7Bs5OJAsT2NTgJQ/exec',
         SESSION_DURATION: 5 * 60 * 1000,
         MAX_DISTANCE: 30,
         GPS_TIMEOUT: 20000,
@@ -1564,7 +1562,8 @@ let missingManagerPhone = '';
         document.getElementById('mode-switch-btn').style.display = 'block';
     }
 
-        function handleSmallCanvasTouch(canvas) {
+            function handleSmallCanvasTouch(canvas) {
+        if (canvas.closest('[data-absent="true"]')) return;
         const isManager = canvas.classList.contains('manager-canvas');
         if (!isManager && sigManagerMode !== 'none') return;
         if (isManager && sigManagerMode === 'none') return;
