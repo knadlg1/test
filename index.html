@@ -398,8 +398,9 @@
 <!-- ===================== 바텀시트 모달들 ===================== -->
 
 <!-- 인증현황 -->
+<!-- 인증현황 -->
 <div class="modal-overlay" id="new-status-modal" onclick="bgCloseModal(event,'new-status-modal')">
-    <div class="modal-sheet">
+    <div class="modal-sheet" style="max-height:55vh;">
         <div class="modal-handle"></div>
         <div class="modal-title">📋 실습근무카드 현황</div>
         <div id="status-modal-interval-list"></div>
@@ -1175,31 +1176,22 @@ let missingManagerPhone = '';
     function closeBottomModal(id) { document.getElementById(id).classList.remove('open'); }
     function bgCloseModal(e, id)  { if (e.target === document.getElementById(id)) closeBottomModal(id); }
 
-    // ==================== 인증현황 ====================
         function openNewStatusModal() {
-        const imgEl2  = document.getElementById('img-cert2');
-        const iconEl2 = document.getElementById('icon-cert2');
-        const hasSrc2 = imgEl2 && imgEl2.getAttribute('src') && imgEl2.getAttribute('src') !== '';
-        const titleEl2 = document.querySelector('#new-status-modal .modal-title');
-        if (titleEl2) {
-            titleEl2.innerHTML = hasSrc2
-                ? `<img src="${imgEl2.getAttribute('src')}" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:6px;">실습근무카드 현황`
-                : `${iconEl2 ? iconEl2.textContent : '✅'} 실습근무카드 현황`;
-        }
         const list = document.getElementById('status-modal-interval-list');
         list.innerHTML = '';
-        if (!currentUser.intervals || currentUser.intervals.length === 0) {
-            list.innerHTML = '<p style="text-align:center;font-size:13px;color:#9096a2;padding:20px;">등록된 실습 기간이 없습니다.</p>';
+        const visible = (currentUser.intervals || []).filter(inv => inv.status !== 'locked');
+        if (visible.length === 0) {
+            list.innerHTML = '<p style="text-align:center;font-size:13px;color:#9096a2;padding:20px;">서명할 실습 기간이 없습니다.</p>';
         } else {
-            currentUser.intervals.forEach((inv, idx) => {
+            visible.forEach(inv => {
+                const realIdx = currentUser.intervals.indexOf(inv);
                 const isCompleted = inv.status === 'completed';
                 const badgeStyle  = isCompleted ? 'background:#dcfce7;color:#16a34a;' : '';
                 const borderColor = isCompleted ? '#bbf7d0' : '#c4b5fd';
-                let action = '';
-                if (isCompleted) action = '<span class="interval-done-new">✔ 완료</span>';
-                else if (inv.status === 'available') action = `<button class="interval-sign-btn-new" onclick="closeBottomModal('new-status-modal');startBsSign(${idx})">서명하기</button>`;
-                else action = '<button class="interval-lock-btn">🔒 잠금</button>';
-                list.innerHTML += `<div class="interval-card-new" style="border-color:${borderColor};"><div><div class="interval-badge-new" style="${badgeStyle}">${idx+1}회차</div><div class="interval-date-new">${shortDate(inv.intervalStr||'')}</div></div>${action}</div>`;
+                const action = isCompleted
+                    ? '<span class="interval-done-new">✔ 완료</span>'
+                    : `<button class="interval-sign-btn-new" onclick="closeBottomModal('new-status-modal');openSignatureUI('${inv.startDate}','${inv.endDate}','${inv.intervalStr}')">서명하기</button>`;
+                list.innerHTML += `<div class="interval-card-new" style="border-color:${borderColor};"><div><div class="interval-badge-new" style="${badgeStyle}">${realIdx+1}회차</div><div class="interval-date-new">${inv.intervalStr||''}</div></div>${action}</div>`;
             });
         }
         openBottomModal('new-status-modal');
