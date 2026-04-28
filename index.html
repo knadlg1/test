@@ -592,16 +592,28 @@
             <div class="sig-modal-title" style="margin:0;">👨‍🏫 담당자 서명</div>
             <button onclick="clearCanvas('missing-manager-canvas')" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">지우기</button>
         </div>
-        <div id="missing-in-time-box" style="display:none;text-align:center;margin-bottom:10px;">
-            <label style="font-size:12px;font-weight:bold;color:#3b82f6;">출근 시간 선택</label>
-            <div class="time-select-group" id="in-time-dropdowns"></div>
-        </div>
-        <div id="missing-out-time-box" style="display:none;text-align:center;margin-bottom:10px;">
-            <label style="font-size:12px;font-weight:bold;color:#ef4444;">퇴근 시간 선택</label>
-            <div class="time-select-group" id="out-time-dropdowns"></div>
-        </div>
+        <div id="missing-in-time-box" style="display:none;background:#f0fdf4;border:2px solid #10b981;border-radius:12px;padding:12px 14px;margin-bottom:10px;text-align:center;">
+                <div style="font-size:13px;font-weight:900;color:#059669;margin-bottom:8px;">🕐 출근 시간 선택 <span style="color:#ef4444;font-size:12px;">★ 필수</span></div>
+                <div class="time-select-group" id="in-time-dropdowns"></div>
+            </div>
+            <div id="missing-out-time-box" style="display:none;background:#fff5f5;border:2px solid #ef4444;border-radius:12px;padding:12px 14px;margin-bottom:10px;text-align:center;">
+                <div style="font-size:13px;font-weight:900;color:#dc2626;margin-bottom:8px;">🕐 퇴근 시간 선택 <span style="color:#ef4444;font-size:12px;">★ 필수</span></div>
+                <div class="time-select-group" id="out-time-dropdowns"></div>
+            </div>
         <canvas id="missing-manager-canvas" class="modal-canvas"></canvas>
         <button class="btn" style="background:#3b82f6;color:white;margin-top:15px;" onclick="completeMissingManagerSig()">담당자 서명 완료</button>
+    </div>
+</div>
+
+    
+<!-- 누락 제출 최종 확인 -->
+<div class="sig-modal-overlay" id="missing-confirm-modal" style="z-index:5000;display:none;">
+    <div class="sig-modal-card">
+        <div style="font-size:15px;font-weight:900;color:#1e293b;text-align:center;margin-bottom:14px;">📋 제출 전 최종 확인</div>
+        <div id="missing-confirm-content" style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center;"></div>
+        <p style="font-size:12px;color:#94a3b8;text-align:center;margin-bottom:12px;">원장님 승인 후 출결 기록에 반영됩니다.</p>
+        <button class="btn" style="background:#3b82f6;color:white;" onclick="doSubmitMissingSignature()">제출하기</button>
+        <button class="btn" style="background:#f1f5f9;color:#475569;" onclick="document.getElementById('missing-confirm-modal').style.display='none';document.getElementById('missing-manager-sig-modal').style.display='flex'">돌아가기</button>
     </div>
 </div>
 
@@ -1813,10 +1825,10 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
     }
     function openMissingStudentSig() { openMissingStudentPad(); }
         function buildTimeDropdowns(prefix) {
-        let hours='<option value="">--시--</option>', mins='<option value="">--분--</option>';
+        let hours='<option value="">시 ▼</option>', mins='<option value="">분 ▼</option>';
         for(let h=6;h<=22;h++) hours+=`<option value="${String(h).padStart(2,'0')}">${String(h).padStart(2,'0')}시</option>`;
         for(let m=0;m<60;m+=5) mins+=`<option value="${String(m).padStart(2,'0')}">${String(m).padStart(2,'0')}분</option>`;
-        return `<select class="time-select" id="${prefix}-hour" onchange="checkMissingTimeSelected()">${hours}</select><span>:</span><select class="time-select" id="${prefix}-min" onchange="checkMissingTimeSelected()">${mins}</select>`;
+        return `<select class="time-select" id="${prefix}-hour">${hours}</select><span>:</span><select class="time-select" id="${prefix}-min">${mins}</select>`;
     }
     function checkMissingTimeSelected() {
         let ok = true;
