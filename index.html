@@ -573,7 +573,7 @@
                 <button class="btn missing-btn-b" style="width:100%;margin-bottom:0;padding:18px 0;" onclick="openMissingManagerPad()">담당자 서명</button>
             </div>
         </div>
-        <button class="btn" style="background:#f1f5f9;color:#475569;margin-bottom:8px;" onclick="submitMissingVacation()">휴가 / 기타 사유 (즉시 제출)</button>
+        
         <button class="btn" id="missing-submit-btn" style="display:none;background:#10b981;color:white;" onclick="submitMissingSignature()">제출하기</button>
     </div>
 </div>
@@ -737,7 +737,7 @@ let missingManagerPhone = '';
 
     const CONFIG = {
         KAKAO_KEY: '256604f2f245388033b0226667539d5f',
-        GAS_URL: 'https://script.google.com/macros/s/AKfycbwfcheN2Koqy6QtiR5hSLNWFOGfsNrRuTneKltyffiTF-kJbcTIbbX7Bs5OJAsT2NTgJQ/exec',
+        GAS_URL: 'https://script.google.com/macros/s/AKfycbyoAnovdhUkm5Q6UZJs69-U-hR3QndY5pPK-lbXlj5wQTRn_b3coewDpAPbH8CoNuWsTw/exec',
         SESSION_DURATION: 5 * 60 * 1000,
         MAX_DISTANCE: 30,
         GPS_TIMEOUT: 20000,
@@ -1001,15 +1001,36 @@ let missingManagerPhone = '';
             });
             const result = await response.json();
 
-            if (result.missingRecord) {
-                window.currentMissingRecord = result.missingRecord;
-                (function(){const m=result.missingRecord,t=m.type;let b='';if(t==='출근'||t==='출,퇴근')b+='<span style="background:#10b981;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;">출근 누락</span>';if(t==='퇴근'||t==='출,퇴근')b+='<span style="background:#ef4444;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;margin-left:6px;">퇴근 누락</span>';document.getElementById('missing-alert-text').innerHTML=`<div style="font-size:13px;color:#475569;text-align:center;margin-bottom:6px;">${m.date}</div><div style="text-align:center;">${b}</div>`;})();
-                document.getElementById('missing-banner-text').innerText = `🚨 [${result.missingRecord.date}] ${result.missingRecord.type} 누락 (눌러서 서명)`;
-                document.getElementById('missing-banner').style.display = 'block';
-                document.getElementById('missing-alert-modal').style.display = 'flex';
-            } else {
-                document.getElementById('missing-banner').style.display = 'none';
-            }
+            const missingList = (Array.isArray(result.missingRecords) && result.missingRecords.length > 0)
+    ? result.missingRecords
+    : (result.missingRecord ? [result.missingRecord] : []);
+
+if (missingList.length > 0) {
+    window.currentMissingRecords = missingList;
+    window.currentMissingRecord = missingList[0]; // 기존 모달/서명 로직 유지용
+
+    (function () {
+        const m = window.currentMissingRecord;
+        const t = m.type;
+        let b = '';
+        if (t === '출근' || t === '출,퇴근') b += '<span style="background:#10b981;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;">출근 누락</span>';
+        if (t === '퇴근' || t === '출,퇴근') b += '<span style="background:#ef4444;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;margin-left:6px;">퇴근 누락</span>';
+        document.getElementById('missing-alert-text').innerHTML =
+            `<div style="font-size:13px;color:#475569;text-align:center;margin-bottom:6px;">${m.date}</div><div style="text-align:center;">${b}</div>`;
+    })();
+
+    const bannerLines = missingList.map(m => `[${m.date}] ${m.type} 누락`).join(' / ');
+    document.getElementById('missing-banner-text').innerText =
+        `🚨 누락 ${missingList.length}건: ${bannerLines} (눌러서 서명)`;
+
+    document.getElementById('missing-banner').style.display = 'block';
+    document.getElementById('missing-alert-modal').style.display = 'flex';
+} else {
+    window.currentMissingRecords = [];
+    window.currentMissingRecord = null;
+    document.getElementById('missing-banner').style.display = 'none';
+}
+
 
                         if (result.checkIn && result.checkIn !== "") {
                 // 출근 완료 → 출근 버튼 회색·비활성, 시간 표시
@@ -1786,11 +1807,24 @@ let missingManagerPhone = '';
         clearMissingManagerSig();
     }
     function openMissingStudentSig() { openMissingStudentPad(); }
-    function buildTimeDropdowns(prefix) {
-        let hours='', mins='';
+        function buildTimeDropdowns(prefix) {
+        let hours='<option value="">--시--</option>', mins='<option value="">--분--</option>';
         for(let h=6;h<=22;h++) hours+=`<option value="${String(h).padStart(2,'0')}">${String(h).padStart(2,'0')}시</option>`;
         for(let m=0;m<60;m+=5) mins+=`<option value="${String(m).padStart(2,'0')}">${String(m).padStart(2,'0')}분</option>`;
-        return `<select class="time-select" id="${prefix}-hour">${hours}</select><span>:</span><select class="time-select" id="${prefix}-min">${mins}</select>`;
+        return `<select class="time-select" id="${prefix}-hour" onchange="checkMissingTimeSelected()">${hours}</select><span>:</span><select class="time-select" id="${prefix}-min" onchange="checkMissingTimeSelected()">${mins}</select>`;
+    }
+    function checkMissingTimeSelected() {
+        let ok = true;
+        const outBox = document.getElementById('missing-out-time-box');
+        const inBox  = document.getElementById('missing-in-time-box');
+        if (outBox && outBox.style.display !== 'none') {
+            if (!document.getElementById('out-hour').value || !document.getElementById('out-min').value) ok = false;
+        }
+        if (inBox && inBox.style.display !== 'none') {
+            if (!document.getElementById('in-hour').value || !document.getElementById('in-min').value) ok = false;
+        }
+        const btn = document.getElementById('missing-final-btn');
+        if (btn) { btn.disabled = !ok; btn.style.opacity = ok ? '1' : '0.4'; }
     }
     async function submitMissingVacation() {
         document.getElementById('missing-alert-modal').style.display='none';
@@ -1816,9 +1850,10 @@ let missingManagerPhone = '';
             else { alert('발송 실패: '+result.message); }
         } catch(e) { showLoader(false); alert('서버 오류.'); }
     }
-        async function verifyManagerOTP() {
+            async function verifyManagerOTP() {
         const otp = document.getElementById('manager-otp-input').value.trim();
         if (!otp) { alert('인증번호를 입력해주세요.'); return; }
+        if (!document.getElementById('otp-consent-check').checked) { alert('개인정보 수집 동의를 체크해주세요.'); return; }
         if (otp === '0000') {
             alert('인증 완료. 서명을 진행해주세요.');
             document.getElementById('otp-request-section').style.display='none';
@@ -1831,7 +1866,7 @@ let missingManagerPhone = '';
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({action:'verifyOTP', otp, phone:missingManagerPhone }) });
             const result = await response.json();
             showLoader(false);
-            if (result.status==='success') { alert('인증 완료. 서명을 진행해주세요.'); document.getElementById('otp-request-section').style.display='none'; document.getElementById('otp-verify-section').style.display='none'; document.getElementById('manager-signature-section').style.display='block'; }
+            if (result.status==='success') { alert('인증 완료. 서명을 진행해주세요.'); document.getElementById('otp-request-section').style.display='none'; document.getElementById('otp-verify-section').style.display='none'; document.getElementById('manager-signature-section').style.display='block'; checkMissingTimeSelected(); }
             else { alert('인증번호가 일치하지 않습니다.'); }
         } catch(e) { showLoader(false); alert('서버 오류.'); }
     }
