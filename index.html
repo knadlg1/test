@@ -1019,9 +1019,13 @@ if (missingList.length > 0) {
             `<div style="font-size:13px;color:#475569;text-align:center;margin-bottom:6px;">${m.date}</div><div style="text-align:center;">${b}</div>`;
     })();
 
-    const bannerLines = missingList.map(m => `[${m.date}] ${m.type} 누락`).join(' / ');
-    document.getElementById('missing-banner-text').innerText =
-        `🚨 누락 ${missingList.length}건: ${bannerLines} (눌러서 서명)`;
+    const bannerLines = missingList
+    .map(m => `• [${m.date}] ${m.type} 누락`)
+    .join('<br>');
+
+document.getElementById('missing-banner-text').innerHTML =
+    `🚨 누락 ${missingList.length}건<br>${bannerLines}<br>(눌러서 서명)`;
+
 
     document.getElementById('missing-banner').style.display = 'block';
     document.getElementById('missing-alert-modal').style.display = 'flex';
