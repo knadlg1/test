@@ -224,7 +224,7 @@
         .missing-title { color:#dc2626; font-size:16px; font-weight:bold; margin-bottom:5px; }
         .missing-date-text { font-size:18px; font-weight:800; color:#1e293b; margin-bottom:10px; }
         .missing-btn-a { background:#10b981; color:white; }
-        .missing-btn-b { background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; }
+        .missing-btn-b { background:#3b82f6; color:white; }
         .time-select-group { display:flex; gap:10px; align-items:center; justify-content:center; margin-bottom:15px; }
         .time-select { padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:16px; background:white; outline:none; }
 
@@ -559,20 +559,18 @@
     <h2 id="processing-text" style="font-size:22px;text-align:center;line-height:1.4;color:white;">처리 중...⏳</h2>
 </div>
 
-<div class="sig-modal-overlay" id="missing-alert-modal" style="z-index:4000;">
-    <div class="sig-modal-card" style="position:relative;">
-        <button onclick="document.getElementById('missing-alert-modal').style.display='none'" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>
-        <div class="missing-box">
+<div class="sig-modal-overlay" id="missing-alert-modal" style="z-index:4000;" onclick="if(event.target===this)document.getElementById('missing-alert-modal').style.display='none'">
+    <div class="sig-modal-card">
+        <div class="missing-box" style="margin-bottom:15px;">
             <div class="missing-title">⚠️ 출퇴근 누락 알림</div>
-            <div class="missing-date-text" id="missing-alert-text">날짜 로딩 중...</div>
+            <div id="missing-alert-text" style="margin-top:8px;"></div>
         </div>
-        <p style="font-size:13px;color:#64748b;margin-bottom:15px;">과거에 누락된 출퇴근 기록이 있습니다.<br>학생과 담당자 서명 후 제출해 주세요.</p>
         <div style="display:flex;gap:10px;margin-bottom:10px;">
-            <div id="missing-student-sig-area" style="flex:1;text-align:center;">
-                <button class="btn missing-btn-a" style="width:100%;margin-bottom:0;" onclick="openMissingStudentPad()">학생 서명</button>
+            <div id="missing-student-sig-area" style="flex:1;min-height:120px;border:1.5px dashed #cbd5e1;border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:6px;">
+                <button class="btn missing-btn-a" style="width:100%;margin-bottom:0;padding:18px 0;" onclick="openMissingStudentPad()">학생 서명</button>
             </div>
-            <div id="missing-manager-sig-area" style="flex:1;text-align:center;">
-                <button class="btn missing-btn-b" style="width:100%;margin-bottom:0;" onclick="openMissingManagerPad()">담당자 서명</button>
+            <div id="missing-manager-sig-area" style="flex:1;min-height:120px;border:1.5px dashed #cbd5e1;border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:6px;">
+                <button class="btn missing-btn-b" style="width:100%;margin-bottom:0;padding:18px 0;" onclick="openMissingManagerPad()">담당자 서명</button>
             </div>
         </div>
         <button class="btn" style="background:#f1f5f9;color:#475569;margin-bottom:8px;" onclick="submitMissingVacation()">휴가 / 기타 사유 (즉시 제출)</button>
@@ -1005,7 +1003,7 @@ let missingManagerPhone = '';
 
             if (result.missingRecord) {
                 window.currentMissingRecord = result.missingRecord;
-                document.getElementById('missing-alert-text').innerText = `${result.missingRecord.date} 의 [${result.missingRecord.type}] 누락`;
+                (function(){const m=result.missingRecord,t=m.type;let b='';if(t==='출근'||t==='출,퇴근')b+='<span style="background:#10b981;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;">출근 누락</span>';if(t==='퇴근'||t==='출,퇴근')b+='<span style="background:#ef4444;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;margin-left:6px;">퇴근 누락</span>';document.getElementById('missing-alert-text').innerHTML=`<div style="font-size:13px;color:#475569;text-align:center;margin-bottom:6px;">${m.date}</div><div style="text-align:center;">${b}</div>`;})();
                 document.getElementById('missing-banner-text').innerText = `🚨 [${result.missingRecord.date}] ${result.missingRecord.type} 누락 (눌러서 서명)`;
                 document.getElementById('missing-banner').style.display = 'block';
                 document.getElementById('missing-alert-modal').style.display = 'flex';
@@ -1730,19 +1728,20 @@ let missingManagerPhone = '';
         document.getElementById('missing-student-sig-modal').style.display='flex';
         setupCanvas('missing-student-canvas');
     }
-    function completeMissingStudentSig() {
+        function completeMissingStudentSig() {
         const canvas = document.getElementById('missing-student-canvas');
         if (isBlankCanvas(canvas)) { alert('서명을 입력해주세요.'); return; }
         missingStudentSigned = true;
-        const img = document.createElement('img');
-        img.src = canvas.toDataURL('image/png');
-        img.style = 'width:100%;border-radius:8px;border:1px solid #e2e8f0;';
-        const area = document.getElementById('missing-student-sig-area');
-        area.innerHTML = '';
-        area.appendChild(img);
+        const dataUrl = canvas.toDataURL('image/png');
+        document.getElementById('missing-student-sig-area').innerHTML=`<div style="position:relative;width:100%;"><img src="${dataUrl}" style="width:100%;border-radius:8px;display:block;"><button onclick="clearMissingStudentSig()" style="position:absolute;top:2px;right:2px;background:#ef4444;color:white;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;font-weight:bold;cursor:pointer;line-height:1;">✕</button></div>`;
         document.getElementById('missing-student-sig-modal').style.display='none';
         document.getElementById('missing-alert-modal').style.display='flex';
         checkMissingBothSigned();
+    }
+    function clearMissingStudentSig() {
+        missingStudentSigned = false;
+        document.getElementById('missing-student-sig-area').innerHTML='<button class="btn missing-btn-a" style="width:100%;margin-bottom:0;padding:18px 0;" onclick="openMissingStudentPad()">학생 서명</button>';
+        document.getElementById('missing-submit-btn').style.display='none';
     }
     function openMissingManagerPad() {
         openSigOTPModal(function(phone) {
@@ -1766,15 +1765,16 @@ let missingManagerPhone = '';
         const canvas = document.getElementById('missing-manager-canvas');
         if (isBlankCanvas(canvas)) { alert('서명을 입력해주세요.'); return; }
         missingManagerSigned = true;
-        const img = document.createElement('img');
-        img.src = canvas.toDataURL('image/png');
-        img.style = 'width:100%;border-radius:8px;border:1px solid #e2e8f0;';
-        const area = document.getElementById('missing-manager-sig-area');
-        area.innerHTML = '';
-        area.appendChild(img);
+        const dataUrl = canvas.toDataURL('image/png');
+        document.getElementById('missing-manager-sig-area').innerHTML=`<div style="position:relative;width:100%;"><img src="${dataUrl}" style="width:100%;border-radius:8px;display:block;"><button onclick="clearMissingManagerSig()" style="position:absolute;top:2px;right:2px;background:#ef4444;color:white;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;font-weight:bold;cursor:pointer;line-height:1;">✕</button></div>`;
         document.getElementById('missing-manager-sig-modal').style.display='none';
         document.getElementById('missing-alert-modal').style.display='flex';
         checkMissingBothSigned();
+    }
+    function clearMissingManagerSig() {
+        missingManagerSigned = false;
+        document.getElementById('missing-manager-sig-area').innerHTML='<button class="btn missing-btn-b" style="width:100%;margin-bottom:0;padding:18px 0;" onclick="openMissingManagerPad()">담당자 서명</button>';
+        document.getElementById('missing-submit-btn').style.display='none';
     }
     function checkMissingBothSigned() {
         if (missingStudentSigned && missingManagerSigned) {
@@ -1782,11 +1782,8 @@ let missingManagerPhone = '';
         }
     }
     function resetMissingSig() {
-        missingStudentSigned = false;
-        missingManagerSigned = false;
-        document.getElementById('missing-submit-btn').style.display='none';
-        document.getElementById('missing-student-sig-area').innerHTML='<button class="btn missing-btn-a" style="width:100%;margin-bottom:0;" onclick="openMissingStudentPad()">학생 서명</button>';
-        document.getElementById('missing-manager-sig-area').innerHTML='<button class="btn missing-btn-b" style="width:100%;margin-bottom:0;" onclick="openMissingManagerPad()">담당자 서명</button>';
+        clearMissingStudentSig();
+        clearMissingManagerSig();
     }
     function openMissingStudentSig() { openMissingStudentPad(); }
     function buildTimeDropdowns(prefix) {
