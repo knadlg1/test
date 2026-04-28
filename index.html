@@ -559,77 +559,58 @@
     <h2 id="processing-text" style="font-size:22px;text-align:center;line-height:1.4;color:white;">처리 중...⏳</h2>
 </div>
 
-<!-- 누락 알림 팝업 -->
 <div class="sig-modal-overlay" id="missing-alert-modal" style="z-index:4000;">
-    <div class="sig-modal-card">
+    <div class="sig-modal-card" style="position:relative;">
+        <button onclick="document.getElementById('missing-alert-modal').style.display='none'" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>
         <div class="missing-box">
             <div class="missing-title">⚠️ 출퇴근 누락 알림</div>
             <div class="missing-date-text" id="missing-alert-text">날짜 로딩 중...</div>
         </div>
-        <p style="font-size:13px;color:#64748b;margin-bottom:15px;">과거에 누락된 출퇴근 기록이 있습니다.<br>시간 나실 때 서명을 제출해 주세요!</p>
-        <button class="btn missing-btn-a" onclick="openMissingStudentSig()">출,퇴 깜빡!(담당자 인증 필요)</button>
-        <button class="btn missing-btn-b" onclick="submitMissingVacation()">휴가 / 기타 사유 (즉시 제출)</button>
-        <button class="btn" style="background:none;border:none;color:#94a3b8;text-decoration:underline;font-size:14px;box-shadow:none;" onclick="document.getElementById('missing-alert-modal').style.display='none'">다음에 할게요 (닫기)</button>
+        <p style="font-size:13px;color:#64748b;margin-bottom:15px;">과거에 누락된 출퇴근 기록이 있습니다.<br>학생과 담당자 서명 후 제출해 주세요.</p>
+        <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <div id="missing-student-sig-area" style="flex:1;text-align:center;">
+                <button class="btn missing-btn-a" style="width:100%;margin-bottom:0;" onclick="openMissingStudentPad()">학생 서명</button>
+            </div>
+            <div id="missing-manager-sig-area" style="flex:1;text-align:center;">
+                <button class="btn missing-btn-b" style="width:100%;margin-bottom:0;" onclick="openMissingManagerPad()">담당자 서명</button>
+            </div>
+        </div>
+        <button class="btn" style="background:#f1f5f9;color:#475569;margin-bottom:8px;" onclick="submitMissingVacation()">휴가 / 기타 사유 (즉시 제출)</button>
+        <button class="btn" id="missing-submit-btn" style="display:none;background:#10b981;color:white;" onclick="submitMissingSignature()">제출하기</button>
     </div>
 </div>
 
 <!-- 누락 학생 서명 -->
 <div class="sig-modal-overlay" id="missing-student-sig-modal" style="z-index:4001;">
     <div class="sig-modal-card">
-        <div class="sig-modal-title">📝 학생 서명 (누락 서류)</div>
-        <p style="text-align:center;font-size:13px;color:#64748b;margin-bottom:10px;">본인 서명 후 담당자에게 폰을 넘겨주세요.</p>
-        <canvas id="missing-student-canvas" class="modal-canvas"></canvas>
-        <div style="text-align:right;margin-top:5px;">
-            <button onclick="clearCanvas('missing-student-canvas')" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;">[지우기]</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <button onclick="document.getElementById('missing-student-sig-modal').style.display='none';document.getElementById('missing-alert-modal').style.display='flex';" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">← 뒤로</button>
+            <div class="sig-modal-title" style="margin:0;">📝 학생 서명</div>
+            <button onclick="clearCanvas('missing-student-canvas')" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">지우기</button>
         </div>
-        <button class="btn" style="background:#0f172a;color:white;margin-top:15px;" onclick="showMissingHandover()">서명 완료 👉 담당자에게 넘기기</button>
+        <canvas id="missing-student-canvas" class="modal-canvas"></canvas>
+        <button class="btn" style="background:#0f172a;color:white;margin-top:15px;" onclick="completeMissingStudentSig()">학생 서명 완료</button>
     </div>
-</div>
-
-<!-- 화면 전환 오버레이 -->
-<div class="locked-overlay" id="missing-handover-overlay" style="z-index:4002;">
-    <h2 style="font-size:24px;text-align:center;line-height:1.4;margin-bottom:10px;">📱 담당 선생님<br>서명 받기!</h2>
-    <p style="color:#cbd5e1;font-size:14px;text-align:center;">선생님 서명 모드로 전환됩니다.</p>
-    <div class="touch-start-btn">👆 터치해서 시작하기</div>
 </div>
 
 <!-- 누락 담당자 서명 -->
 <div class="sig-modal-overlay" id="missing-manager-sig-modal" style="z-index:4003;display:none;">
     <div class="sig-modal-card">
-        <div class="sig-modal-title">👨‍🏫 담당자 확인 및 서명</div>
-        <div style="background:#fff5f5;border:1px solid #feb2b2;padding:10px;border-radius:8px;margin-bottom:12px;text-align:center;">
-            <span id="missing-ai-warning-text" style="color:#dc2626;font-size:12px;font-weight:900;">🚨 [실습병원] 담당자 인증</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <button onclick="document.getElementById('missing-manager-sig-modal').style.display='none';document.getElementById('missing-alert-modal').style.display='flex';" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">← 뒤로</button>
+            <div class="sig-modal-title" style="margin:0;">👨‍🏫 담당자 서명</div>
+            <button onclick="clearCanvas('missing-manager-canvas')" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">지우기</button>
         </div>
-        <div id="otp-request-section" style="margin-bottom:15px;text-align:left;">
-            <label style="font-size:12px;font-weight:bold;color:#334155;">담당자 휴대폰 번호</label>
-            <div style="display:flex;gap:8px;margin-top:5px;">
-                <input type="tel" id="manager-phone-input" placeholder="01012345678" style="flex:1;padding:10px;border-radius:8px;border:1px solid #cbd5e1;">
-                <button class="btn" style="background:#3b82f6;color:white;width:auto;padding:10px 15px;font-size:13px;margin-bottom:0;" onclick="requestManagerOTP()">인증요청</button>
-            </div>
+        <div id="missing-in-time-box" style="display:none;text-align:center;margin-bottom:10px;">
+            <label style="font-size:12px;font-weight:bold;color:#3b82f6;">출근 시간 선택</label>
+            <div class="time-select-group" id="in-time-dropdowns"></div>
         </div>
-        <div id="otp-verify-section" style="display:none;margin-bottom:15px;text-align:left;">
-            <label style="font-size:12px;font-weight:bold;color:#334155;">인증번호 입력</label>
-            <div style="display:flex;gap:8px;margin-top:5px;">
-                <input type="number" id="manager-otp-input" placeholder="인증번호 4자리" style="flex:1;padding:10px;border-radius:8px;border:1px solid #cbd5e1;">
-                <button class="btn" style="background:#10b981;color:white;width:auto;padding:10px 15px;font-size:13px;margin-bottom:0;" onclick="verifyManagerOTP()">확인</button>
-            </div>
+        <div id="missing-out-time-box" style="display:none;text-align:center;margin-bottom:10px;">
+            <label style="font-size:12px;font-weight:bold;color:#ef4444;">퇴근 시간 선택</label>
+            <div class="time-select-group" id="out-time-dropdowns"></div>
         </div>
-        <div id="manager-signature-section" style="display:none;">
-            <div id="missing-in-time-box" style="display:none;text-align:center;">
-                <label style="font-size:12px;font-weight:bold;color:#3b82f6;">출근 시간 선택</label>
-                <div class="time-select-group" id="in-time-dropdowns"></div>
-            </div>
-            <div id="missing-out-time-box" style="display:none;text-align:center;">
-                <label style="font-size:12px;font-weight:bold;color:#ef4444;">퇴근 시간 선택</label>
-                <div class="time-select-group" id="out-time-dropdowns"></div>
-            </div>
-            <canvas id="missing-manager-canvas" class="modal-canvas" style="margin-top:10px;"></canvas>
-            <div style="text-align:right;margin-top:5px;">
-                <button onclick="clearCanvas('missing-manager-canvas')" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;">[지우기]</button>
-            </div>
-            <button class="btn" id="missing-final-btn" style="background:#3b82f6;color:white;margin-top:15px;" onclick="submitMissingSignature()">승인 요청하기 (원장님 확인용)</button>
-            <button class="btn" style="background:#f1f5f9;color:#475569;" onclick="document.getElementById('missing-manager-sig-modal').style.display='none'">취소하고 닫기</button>
-        </div>
+        <canvas id="missing-manager-canvas" class="modal-canvas"></canvas>
+        <button class="btn" style="background:#3b82f6;color:white;margin-top:15px;" onclick="completeMissingManagerSig()">담당자 서명 완료</button>
     </div>
 </div>
 
@@ -1740,21 +1721,37 @@ let missingManagerPhone = '';
         c.addEventListener('touchend', ()=>{drawing=false;});
     }
 
-    // ==================== 누락 서명 ====================
-    function openMissingStudentSig() {
+        // ==================== 누락 서명 ====================
+    let missingStudentSigned = false;
+    let missingManagerSigned = false;
+
+    function openMissingStudentPad() {
         document.getElementById('missing-alert-modal').style.display='none';
         document.getElementById('missing-student-sig-modal').style.display='flex';
         setupCanvas('missing-student-canvas');
     }
-    function showMissingHandover() {
+    function completeMissingStudentSig() {
         const canvas = document.getElementById('missing-student-canvas');
         if (isBlankCanvas(canvas)) { alert('서명을 입력해주세요.'); return; }
+        missingStudentSigned = true;
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/png');
+        img.style = 'width:100%;border-radius:8px;border:1px solid #e2e8f0;';
+        const area = document.getElementById('missing-student-sig-area');
+        area.innerHTML = '';
+        area.appendChild(img);
         document.getElementById('missing-student-sig-modal').style.display='none';
-        document.getElementById('missing-handover-overlay').style.display='flex';
-        document.getElementById('missing-handover-overlay').onclick = openMissingManagerSig;
+        document.getElementById('missing-alert-modal').style.display='flex';
+        checkMissingBothSigned();
+    }
+    function openMissingManagerPad() {
+        openSigOTPModal(function(phone) {
+            missingManagerPhone = phone;
+            document.getElementById('missing-alert-modal').style.display='none';
+            openMissingManagerSig();
+        });
     }
     function openMissingManagerSig() {
-        document.getElementById('missing-handover-overlay').style.display='none';
         const missing = window.currentMissingRecord;
         if (!missing) return;
         const inBox  = document.getElementById('missing-in-time-box');
@@ -1762,12 +1759,36 @@ let missingManagerPhone = '';
         inBox.style.display='none'; outBox.style.display='none';
         if (missing.type==='출근'||missing.type==='출,퇴근') { inBox.style.display='block'; document.getElementById('in-time-dropdowns').innerHTML=buildTimeDropdowns('in'); }
         if (missing.type==='퇴근'||missing.type==='출,퇴근') { outBox.style.display='block'; document.getElementById('out-time-dropdowns').innerHTML=buildTimeDropdowns('out'); }
-        document.getElementById('otp-request-section').style.display='block';
-        document.getElementById('otp-verify-section').style.display='none';
-        document.getElementById('manager-signature-section').style.display='none';
         document.getElementById('missing-manager-sig-modal').style.display='flex';
         setupCanvas('missing-manager-canvas');
     }
+    function completeMissingManagerSig() {
+        const canvas = document.getElementById('missing-manager-canvas');
+        if (isBlankCanvas(canvas)) { alert('서명을 입력해주세요.'); return; }
+        missingManagerSigned = true;
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/png');
+        img.style = 'width:100%;border-radius:8px;border:1px solid #e2e8f0;';
+        const area = document.getElementById('missing-manager-sig-area');
+        area.innerHTML = '';
+        area.appendChild(img);
+        document.getElementById('missing-manager-sig-modal').style.display='none';
+        document.getElementById('missing-alert-modal').style.display='flex';
+        checkMissingBothSigned();
+    }
+    function checkMissingBothSigned() {
+        if (missingStudentSigned && missingManagerSigned) {
+            document.getElementById('missing-submit-btn').style.display='block';
+        }
+    }
+    function resetMissingSig() {
+        missingStudentSigned = false;
+        missingManagerSigned = false;
+        document.getElementById('missing-submit-btn').style.display='none';
+        document.getElementById('missing-student-sig-area').innerHTML='<button class="btn missing-btn-a" style="width:100%;margin-bottom:0;" onclick="openMissingStudentPad()">학생 서명</button>';
+        document.getElementById('missing-manager-sig-area').innerHTML='<button class="btn missing-btn-b" style="width:100%;margin-bottom:0;" onclick="openMissingManagerPad()">담당자 서명</button>';
+    }
+    function openMissingStudentSig() { openMissingStudentPad(); }
     function buildTimeDropdowns(prefix) {
         let hours='', mins='';
         for(let h=6;h<=22;h++) hours+=`<option value="${String(h).padStart(2,'0')}">${String(h).padStart(2,'0')}시</option>`;
@@ -1817,7 +1838,7 @@ let missingManagerPhone = '';
             else { alert('인증번호가 일치하지 않습니다.'); }
         } catch(e) { showLoader(false); alert('서버 오류.'); }
     }
-    async function submitMissingSignature() {
+        async function submitMissingSignature() {
         const missing = window.currentMissingRecord;
         if (!missing) return;
         const studentCanvas = document.getElementById('missing-student-canvas');
@@ -1827,17 +1848,17 @@ let missingManagerPhone = '';
         let inTime='', outTime='';
         if (missing.type==='출근'||missing.type==='출,퇴근') inTime=(document.getElementById('in-hour')||{}).value+':'+(document.getElementById('in-min')||{}).value;
         if (missing.type==='퇴근'||missing.type==='출,퇴근') outTime=(document.getElementById('out-hour')||{}).value+':'+(document.getElementById('out-min')||{}).value;
-        const btn = document.getElementById('missing-final-btn');
+        const btn = document.getElementById('missing-submit-btn');
         btn.disabled=true; btn.textContent='처리 중...';
         showLoader(true);
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'submitPendingMissingAttendance', kakaoId:currentUser.kakaoId, name:currentUser.name, missingRecord:missing, studentSignature:studentCanvas.toDataURL('image/png').split(',')[1], managerSignature:managerCanvas.toDataURL('image/png').split(',')[1], inTime, outTime }) });
+            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'submitPendingMissingAttendance', kakaoId:currentUser.kakaoId, name:currentUser.name, missingRecord:missing, studentSignature:studentCanvas.toDataURL('image/png').split(',')[1], managerSignature:managerCanvas.toDataURL('image/png').split(',')[1], inTime, outTime, managerPhone:missingManagerPhone }) });
             const result = await response.json();
             showLoader(false);
-            if (result.status==='success') { alert('승인 요청 완료!'); location.reload(); }
+            if (result.status==='success') { alert('제출 완료!'); resetMissingSig(); document.getElementById('missing-alert-modal').style.display='none'; location.reload(); }
             else { alert('제출 실패: '+(result.message||'')); }
         } catch(e) { showLoader(false); alert('서버 오류.'); }
-        finally { btn.disabled=false; btn.textContent='승인 요청하기 (원장님 확인용)'; }
+        finally { btn.disabled=false; btn.textContent='제출하기'; }
     }
 
     
