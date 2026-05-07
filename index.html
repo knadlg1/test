@@ -5,6 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>사하제일간호학원 출결시스템</title>
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js"></script>
+    <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBaCpQKykViq6526dCJ8mEYbUZqyg5-NUo",
+    authDomain: "my-attendance-8122d.firebaseapp.com",
+    projectId: "my-attendance-8122d",
+    storageBucket: "my-attendance-8122d.firebasestorage.app",
+    messagingSenderId: "994601190154",
+    appId: "1:994601190154:web:d702adbf20039f73ee70f3"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  window.db = getFirestore(app);
+  window.fsDoc = doc;
+  window.fsGetDoc = getDoc;
+  window.fsSetDoc = setDoc;
+  window.fsUpdateDoc = updateDoc;
+  window.fsOnSnapshot = onSnapshot;
+
+  console.log('Firestore 초기화 완료');
+</script>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
 
@@ -722,7 +745,7 @@
 </div>
 <label style="font-size:11px;color:#475569;display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin-top:10px;">
     <input type="checkbox" id="otp-consent-check" style="margin-top:2px;flex-shrink:0;">
-    <span>부정 인증 방지를 위해 담당자 확인을 위해 담당자 번호는 수집 됨에 동의합니다.</span>
+    <span>부정 인증 방지를 위해 담당자 번호 수집에 동의합니다.</span>
 </label>
         </div>
         <button class="modal-close" onclick="closeSigOTPModal()">취소</button>
@@ -870,10 +893,42 @@ let missingManagerPhone = '';
         try {
             const deviceId = generateDeviceId();
             if (!silent) showLoader(true);
-            const response = await fetchWithRetry(CONFIG.GAS_URL, {
-                body: JSON.stringify({ action:'checkStudent', kakaoId:currentUser.kakaoId, deviceId })
-            });
-            const result = await response.json();
+
+            let result = null;
+
+            // Firestore에서 먼저 조회
+            try {
+                const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
+                const docSnap = await window.fsGetDoc(docRef);
+                if (docSnap.exists()) {
+                    const s = docSnap.data();
+                    if (s.deviceId && s.deviceId !== '' && s.deviceId !== String(deviceId)) {
+                        result = { status: 'device_mismatch' };
+                    } else {
+                        if (!s.deviceId || s.deviceId === '') {
+                            await window.fsUpdateDoc(docRef, { deviceId: String(deviceId) });
+                        }
+                        result = { status: 'found', ...s };
+                    }
+                }
+            } catch(fsErr) {
+                console.warn('Firestore 조회 실패, GAS로 폴백:', fsErr);
+            }
+
+            // Firestore에 없으면 GAS로 폴백
+            if (!result) {
+                const response = await fetchWithRetry(CONFIG.GAS_URL, {
+                    body: JSON.stringify({ action:'checkStudent', kakaoId:currentUser.kakaoId, deviceId })
+                });
+                result = await response.json();
+                // GAS 성공시 Firestore에 저장
+                if (result.status === 'found') {
+                    try {
+                        const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
+                        await window.fsSetDoc(docRef, result);
+                    } catch(e) {}
+                }
+            }
 
             if (result.status === 'found') {
                 currentUser.name        = result.name;
@@ -1158,10 +1213,45 @@ function setMissingAlertText(rec) {
 
             const now = new Date();
             const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-            const response = await fetchWithRetry(CONFIG.GAS_URL, {
-                body: JSON.stringify({ action:'recordAttendance', type, kakaoId:currentUser.kakaoId, name:currentUser.name, phone:currentUser.phone||'', hospital:currentUser.hospital, time:timeStr, accuracy:Math.round(pos.coords.accuracy), distance:Math.round(dist) })
-            });
-            const result = await response.json();
+            const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+
+            let result = null;
+
+            // Firestore에 즉시 기록
+            try {
+                const attRef = window.fsDoc(window.db, 'attendance', String(currentUser.kakaoId) + '_' + todayStr);
+                const attSnap = await window.fsGetDoc(attRef);
+                const existing = attSnap.exists() ? attSnap.data() : {};
+
+                if (type === '출근') {
+                    if (existing.inTime) { result = { status: 'duplicate' }; }
+                    else {
+                        await window.fsSetDoc(attRef, { ...existing, kakaoId: currentUser.kakaoId, name: currentUser.name, hospital: currentUser.hospital, date: todayStr, inTime: timeStr, inAccuracy: Math.round(pos.coords.accuracy), inDistance: Math.round(dist) }, { merge: true });
+                        result = { status: 'success' };
+                    }
+                } else {
+                    if (existing.outTime) { result = { status: 'duplicate' }; }
+                    else {
+                        await window.fsSetDoc(attRef, { ...existing, outTime: timeStr, outAccuracy: Math.round(pos.coords.accuracy), outDistance: Math.round(dist) }, { merge: true });
+                        result = { status: 'success' };
+                    }
+                }
+            } catch(fsErr) {
+                console.warn('Firestore 출퇴근 실패, GAS 폴백:', fsErr);
+            }
+
+            // Firestore 실패시 GAS 폴백 + 성공시 GAS에도 백그라운드 기록
+            if (!result) {
+                const response = await fetchWithRetry(CONFIG.GAS_URL, {
+                    body: JSON.stringify({ action:'recordAttendance', type, kakaoId:currentUser.kakaoId, name:currentUser.name, phone:currentUser.phone||'', hospital:currentUser.hospital, time:timeStr, accuracy:Math.round(pos.coords.accuracy), distance:Math.round(dist) })
+                });
+                result = await response.json();
+            } else if (result.status === 'success') {
+                // 백그라운드로 GAS에도 기록 (스프레드시트 백업)
+                fetchWithRetry(CONFIG.GAS_URL, {
+                    body: JSON.stringify({ action:'recordAttendance', type, kakaoId:currentUser.kakaoId, name:currentUser.name, phone:currentUser.phone||'', hospital:currentUser.hospital, time:timeStr, accuracy:Math.round(pos.coords.accuracy), distance:Math.round(dist) })
+                }).catch(e => console.warn('GAS 백업 실패:', e));
+            }
             overlay.style.display = 'none';
 
                         if (result.status === 'success') {
@@ -1284,8 +1374,29 @@ function setMissingAlertText(rec) {
         bsManagerPhone = phone;
         showLoader(true);
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'requestOTP', phone:phone, kakaoId:currentUser.kakaoId, name:currentUser.name }) });
-            const result = await response.json();
+            let result = null;
+
+            // Firestore에서 오늘 출퇴근 상태 조회
+            try {
+                const now = new Date();
+                const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+                const attRef = window.fsDoc(window.db, 'attendance', String(currentUser.kakaoId) + '_' + todayStr);
+                const attSnap = await window.fsGetDoc(attRef);
+                if (attSnap.exists()) {
+                    const d = attSnap.data();
+                    result = { status:'success', checkIn: d.inTime||'', checkOut: d.outTime||'', missingRecords:[] };
+                }
+            } catch(fsErr) {
+                console.warn('Firestore 상태조회 실패, GAS 폴백:', fsErr);
+            }
+
+            // Firestore에 오늘 데이터 없으면 GAS로 폴백 (누락기록 포함)
+            if (!result) {
+                const response = await fetchWithRetry(CONFIG.GAS_URL, {
+                    body: JSON.stringify({ action:'getTodayStatus', kakaoId:currentUser.kakaoId })
+                });
+                result = await response.json();
+            }
             showLoader(false);
             if (result.status === 'success') {
                 document.getElementById('otp-request-area').style.display = 'none';
