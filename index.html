@@ -1248,8 +1248,14 @@ function setMissingAlertText(rec) {
                 const pct = Math.min(Math.round(totalHours / 780 * 100), 100);
                 document.getElementById('stat-hours').textContent = totalHours + 'h / 780h';
                 document.getElementById('progress-fill').style.width = pct + '%';
-                // 수강증명서 상태 말풍선
-                updateCertBubble(result.certStatus || '');
+                // 수강증명서 상태 말풍선 - Firestore에서 직접 읽기
+                try {
+                    const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
+                    const docSnap = await window.fsGetDoc(docRef);
+                    if (docSnap.exists()) {
+                        updateCertBubble(docSnap.data().certStatus || '');
+                    }
+                } catch(fsErr) { console.warn('certStatus 조회 실패:', fsErr); }
                 if (result.pendingRequest && result.pendingRequest !== "") {
                     currentPendingRequest = result.pendingRequest;
                     document.getElementById('request-type-text').innerText = currentPendingRequest;
