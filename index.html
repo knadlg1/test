@@ -19,6 +19,32 @@
   };
 
   const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.db = db;
+  window.fsDoc = doc;
+  window.fsGetDoc = getDoc;
+  window.fsSetDoc = setDoc;
+  window.fsUpdateDoc = updateDoc;
+  window.fsOnSnapshot = onSnapshot;
+
+  window.fsReady = true;
+  console.log('Firestore 초기화 완료');
+
+  // Firestore 준비 완료 이벤트 발생
+  window.dispatchEvent(new Event('fsReady'));
+</script>
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBaCpQKykViq6526dCJ8mEYbUZqyg5-NUo",
+    authDomain: "my-attendance-8122d.firebaseapp.com",
+    projectId: "my-attendance-8122d",
+    storageBucket: "my-attendance-8122d.firebasestorage.app",
+    messagingSenderId: "994601190154",
+    appId: "1:994601190154:web:d702adbf20039f73ee70f3"
+  };
+
+  const app = initializeApp(firebaseConfig);
   window.db = getFirestore(app);
   window.fsDoc = doc;
   window.fsGetDoc = getDoc;
@@ -786,6 +812,10 @@ let missingManagerPhone = '';
 
     // ==================== 초기화 ====================
     window.onload = async function() {
+        // Firestore 준비 대기
+    if (!window.fsReady) {
+        await new Promise(resolve => window.addEventListener('fsReady', resolve, { once: true }));
+    }
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
 
