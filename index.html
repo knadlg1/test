@@ -8,6 +8,7 @@
     <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
   import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBaCpQKykViq6526dCJ8mEYbUZqyg5-NUo",
@@ -20,18 +21,26 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
 
   window.db = db;
+  window.auth = auth;
   window.fsDoc = doc;
   window.fsGetDoc = getDoc;
   window.fsSetDoc = setDoc;
   window.fsUpdateDoc = updateDoc;
   window.fsOnSnapshot = onSnapshot;
 
+  // 익명 로그인
+  try {
+    await signInAnonymously(auth);
+    console.log('Firebase 익명 로그인 완료');
+  } catch(e) {
+    console.warn('익명 로그인 실패:', e);
+  }
+
   window.fsReady = true;
   console.log('Firestore 초기화 완료');
-
-  // Firestore 준비 완료 이벤트 발생
   window.dispatchEvent(new Event('fsReady'));
 </script>
 
@@ -605,6 +614,7 @@
     <div class="sig-modal-card">
         <div class="missing-box" style="margin-bottom:15px;">
             <div class="missing-title">⚠️ 출퇴근 누락 알림</div>
+            <div id="missing-date-badge" style="text-align:center;margin-top:6px;margin-bottom:2px;font-size:15px;font-weight:900;color:#1e293b;background:#f1f5f9;border-radius:10px;padding:6px 0;"></div>
             <div id="missing-alert-text" style="margin-top:8px;"></div>
         </div>
         <div style="display:flex;gap:10px;margin-bottom:10px;">
@@ -625,7 +635,10 @@
     <div class="sig-modal-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
             <button onclick="document.getElementById('missing-student-sig-modal').style.display='none';document.getElementById('missing-alert-modal').style.display='flex';" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">← 뒤로</button>
-            <div class="sig-modal-title" style="margin:0;">📝 학생 서명</div>
+            <div style="text-align:center;">
+                <div class="sig-modal-title" style="margin:0;">📝 학생 서명</div>
+                <div id="missing-student-date-badge" style="font-size:13px;font-weight:900;color:#6c63ff;margin-top:2px;"></div>
+            </div>
             <button onclick="clearCanvas('missing-student-canvas')" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">지우기</button>
         </div>
         <canvas id="missing-student-canvas" class="modal-canvas"></canvas>
@@ -638,7 +651,10 @@
     <div class="sig-modal-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
             <button onclick="document.getElementById('missing-manager-sig-modal').style.display='none';document.getElementById('missing-alert-modal').style.display='flex';" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">← 뒤로</button>
-            <div class="sig-modal-title" style="margin:0;">👨‍🏫 담당자 서명</div>
+            <div style="text-align:center;">
+                <div class="sig-modal-title" style="margin:0;">👨‍🏫 담당자 서명</div>
+                <div id="missing-manager-date-badge" style="font-size:13px;font-weight:900;color:#6c63ff;margin-top:2px;"></div>
+            </div>
             <button onclick="clearCanvas('missing-manager-canvas')" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">지우기</button>
         </div>
         <div id="missing-in-time-box" style="display:none;background:#f0fdf4;border:2px solid #10b981;border-radius:12px;padding:12px 14px;margin-bottom:10px;text-align:center;">
@@ -1104,8 +1120,14 @@ function setMissingAlertText(rec) {
         let b = '';
         if (t === '출근' || t === '출,퇴근') b += '<span style="background:#10b981;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;">출근 누락</span>';
         if (t === '퇴근' || t === '출,퇴근') b += '<span style="background:#ef4444;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;margin-left:6px;">퇴근 누락</span>';
-        document.getElementById('missing-alert-text').innerHTML =
-            `<div style="font-size:13px;color:#475569;text-align:center;margin-bottom:6px;">${rec.date}</div><div style="text-align:center;">${b}</div>`;
+        document.getElementById('missing-date-badge').textContent = '📅 ' + rec.date;
+        document.getElementById('missing-alert-text').innerHTML = `<div style="text-align:center;">${b}</div>`;
+        // 학생/담당자 서명 모달에도 날짜 동기화
+        const badge = '📅 ' + rec.date;
+        const sb = document.getElementById('missing-student-date-badge');
+        const mb = document.getElementById('missing-manager-date-badge');
+        if (sb) sb.textContent = badge;
+        if (mb) mb.textContent = badge;
     }
 
     if (missingList.length > 0) {
@@ -1226,9 +1248,21 @@ function setMissingAlertText(rec) {
         const inBtn  = document.getElementById('check-in-btn');
         const outBtn = document.getElementById('check-out-btn');
         const overlay = document.getElementById('processing-overlay');
-        document.getElementById('processing-text').textContent = type === '출근' ? '출근 처리 중...⏳' : '퇴근 처리 중...⏳';
+
+        // WebAuthn 인증 먼저
+        document.getElementById('processing-text').textContent = '본인 인증 중...🔐';
         overlay.style.display = 'flex';
         if (type === '출근') inBtn.disabled = true; else outBtn.disabled = true;
+
+        const authOk = await ensureWebAuthn(currentUser.kakaoId, currentUser.name);
+        if (!authOk) {
+            overlay.style.display = 'none';
+            if (type === '출근') inBtn.disabled = false; else outBtn.disabled = false;
+            alert('본인 인증에 실패했습니다.\n등록된 기기에서 다시 시도해주세요.');
+            return;
+        }
+
+        document.getElementById('processing-text').textContent = type === '출근' ? '출근 처리 중...⏳' : '퇴근 처리 중...⏳';
 
         try {
             const pos = await getCurrentPosition();
@@ -1321,19 +1355,38 @@ function setMissingAlertText(rec) {
         function openNewStatusModal() {
         const list = document.getElementById('status-modal-interval-list');
         list.innerHTML = '';
-                const visible = (currentUser.intervals || []).filter(inv => inv.status !== 'locked' && !inv.noRecords);
+
+        const allIntervals = currentUser.intervals || [];
+
+        // 회차 번호는 전체 기준, 표시는 locked/noRecords 제외
+        const visible = allIntervals.filter(inv => inv.status !== 'locked' && !inv.noRecords);
+
         if (visible.length === 0) {
             list.innerHTML = '<p style="text-align:center;font-size:13px;color:#9096a2;padding:20px;">서명할 실습 기간이 없습니다.</p>';
         } else {
             visible.forEach(inv => {
-                const realIdx = currentUser.intervals.indexOf(inv);
+                const realIdx = allIntervals.indexOf(inv);
                 const isCompleted = inv.status === 'completed';
                 const badgeStyle  = isCompleted ? 'background:#dcfce7;color:#16a34a;' : '';
                 const borderColor = isCompleted ? '#bbf7d0' : '#c4b5fd';
-                const action = isCompleted
-                    ? '<span class="interval-done-new">✔ 완료</span>'
-                    : `<button class="interval-sign-btn-new" onclick="closeBottomModal('new-status-modal');openSignatureUI('${inv.startDate}','${inv.endDate}','${inv.intervalStr}')">서명하기</button>`;
-                list.innerHTML += `<div class="interval-card-new" style="border-color:${borderColor};"><div><div class="interval-badge-new" style="${badgeStyle}">${realIdx+1}회차</div><div class="interval-date-new">${inv.intervalStr||''}</div></div>${action}</div>`;
+
+                // 날짜 표시: intervalStr 우선, 없으면 startDate~endDate
+                let dateStr = inv.intervalStr || '';
+                if (!dateStr && inv.startDate && inv.endDate) {
+                    dateStr = inv.startDate + ' ~ ' + inv.endDate;
+                }
+
+                // 출퇴근 데이터 없는 경우(noRecords) 서명하기 버튼 숨김
+                let action = '';
+                if (isCompleted) {
+                    action = '<span class="interval-done-new">✔ 완료</span>';
+                } else if (inv.noRecords) {
+                    action = '<span style="font-size:11px;color:#94a3b8;font-weight:600;">기록 없음</span>';
+                } else {
+                    action = `<button class="interval-sign-btn-new" onclick="closeBottomModal('new-status-modal');openSignatureUI('${inv.startDate}','${inv.endDate}','${inv.intervalStr||dateStr}')">서명하기</button>`;
+                }
+
+                list.innerHTML += `<div class="interval-card-new" style="border-color:${borderColor};"><div><div class="interval-badge-new" style="${badgeStyle}">${realIdx+1}회차</div><div class="interval-date-new">${dateStr}</div></div>${action}</div>`;
             });
         }
         openBottomModal('new-status-modal');
@@ -1654,10 +1707,96 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
     }
     
     function generateDeviceId() {
-        const w=Math.min(screen.width,screen.height), h=Math.max(screen.width,screen.height);
-        const ua=navigator.userAgent.toLowerCase();
-        const isTablet=/(ipad|tablet|(android(?!.*mobile)))/.test(ua);
-        return `${isTablet?'T':'M'}-${w}x${h}-cd${screen.colorDepth}-tp${navigator.maxTouchPoints||0}`;
+        // WebAuthn 등록된 경우 credentialId 사용, 아니면 localStorage UUID 폴백
+        const stored = localStorage.getItem('deviceUUID');
+        if (stored) return stored;
+        const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random()*16|0;
+            return (c==='x'?r:(r&0x3|0x8)).toString(16);
+        });
+        localStorage.setItem('deviceUUID', uuid);
+        return uuid;
+    }
+
+    // ==================== WebAuthn ====================
+    async function registerWebAuthn(kakaoId, name) {
+        if (!window.PublicKeyCredential) return false;
+        try {
+            const challenge = new Uint8Array(32);
+            crypto.getRandomValues(challenge);
+
+            const credential = await navigator.credentials.create({
+                publicKey: {
+                    challenge,
+                    rp: { name: '사하제일간호학원', id: location.hostname },
+                    user: {
+                        id: new TextEncoder().encode(String(kakaoId)),
+                        name: String(kakaoId),
+                        displayName: name || '학생'
+                    },
+                    pubKeyCredParams: [
+                        { type: 'public-key', alg: -7 },
+                        { type: 'public-key', alg: -257 }
+                    ],
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'required'
+                    },
+                    timeout: 60000
+                }
+            });
+
+            const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+
+            // Firestore에 저장
+            const docRef = window.fsDoc(window.db, 'students', String(kakaoId));
+            await window.fsUpdateDoc(docRef, { webAuthnCredId: credId, webAuthnRegistered: true });
+            localStorage.setItem('webAuthnCredId', credId);
+            console.log('WebAuthn 등록 완료');
+            return true;
+        } catch(e) {
+            console.warn('WebAuthn 등록 실패:', e);
+            return false;
+        }
+    }
+
+    async function verifyWebAuthn(kakaoId) {
+        if (!window.PublicKeyCredential) return true; // 미지원시 통과
+        const credId = localStorage.getItem('webAuthnCredId');
+        if (!credId) return false;
+        try {
+            const challenge = new Uint8Array(32);
+            crypto.getRandomValues(challenge);
+
+            const credIdBytes = Uint8Array.from(atob(credId), c => c.charCodeAt(0));
+
+            const assertion = await navigator.credentials.get({
+                publicKey: {
+                    challenge,
+                    rpId: location.hostname,
+                    allowCredentials: [{ type: 'public-key', id: credIdBytes }],
+                    userVerification: 'required',
+                    timeout: 60000
+                }
+            });
+
+            return !!assertion;
+        } catch(e) {
+            console.warn('WebAuthn 인증 실패:', e);
+            return false;
+        }
+    }
+
+    async function ensureWebAuthn(kakaoId, name) {
+        if (!window.PublicKeyCredential) return true; // 미지원 기기 통과
+        const credId = localStorage.getItem('webAuthnCredId');
+        if (!credId) {
+            // 미등록 → 등록 시도
+            const ok = await registerWebAuthn(kakaoId, name);
+            return ok;
+        }
+        // 등록됨 → 인증
+        return await verifyWebAuthn(kakaoId);
     }
 
     function preventBackButton() {
@@ -2031,18 +2170,31 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
         async function submitMissingSignature() {
         const missing = window.currentMissingRecord;
         if (!missing) return;
-        const studentCanvas = document.getElementById('missing-student-canvas');
-        const managerCanvas = document.getElementById('missing-manager-canvas');
-        if (isBlankCanvas(studentCanvas)) { alert('학생 서명이 없습니다.'); return; }
-        if (isBlankCanvas(managerCanvas)) { alert('담당자 서명이 없습니다.'); return; }
+
+        // 서명 이미지: canvas 또는 img 태그 둘 다 지원
+        function getSigData(areaId, canvasId) {
+            const img = document.querySelector('#' + areaId + ' img');
+            if (img) return img.src.split(',')[1];
+            const canvas = document.getElementById(canvasId);
+            if (canvas && !isBlankCanvas(canvas)) return canvas.toDataURL('image/png').split(',')[1];
+            return null;
+        }
+
+        const studentSig = getSigData('missing-student-sig-area', 'missing-student-canvas');
+        const managerSig = getSigData('missing-manager-sig-area', 'missing-manager-canvas');
+
+        if (!studentSig) { alert('학생 서명이 없습니다.'); return; }
+        if (!managerSig) { alert('담당자 서명이 없습니다.'); return; }
+
         let inTime='', outTime='';
         if (missing.type==='출근'||missing.type==='출,퇴근') inTime=(document.getElementById('in-hour')||{}).value+':'+(document.getElementById('in-min')||{}).value;
         if (missing.type==='퇴근'||missing.type==='출,퇴근') outTime=(document.getElementById('out-hour')||{}).value+':'+(document.getElementById('out-min')||{}).value;
+
         const btn = document.getElementById('missing-submit-btn');
         btn.disabled=true; btn.textContent='처리 중...';
         showLoader(true);
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'submitPendingMissingAttendance', kakaoId:currentUser.kakaoId, name:currentUser.name, missingRecord:missing, studentSignature:studentCanvas.toDataURL('image/png').split(',')[1], managerSignature:managerCanvas.toDataURL('image/png').split(',')[1], inTime, outTime, managerPhone:missingManagerPhone }) });
+            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'submitPendingMissingAttendance', kakaoId:currentUser.kakaoId, name:currentUser.name, missingRecord:missing, studentSignature:studentSig, managerSignature:managerSig, inTime, outTime, managerPhone:missingManagerPhone }) });
             const result = await response.json();
             showLoader(false);
             if (result.status==='success') { alert('제출 완료!'); resetMissingSig(); document.getElementById('missing-alert-modal').style.display='none'; location.reload(); }
