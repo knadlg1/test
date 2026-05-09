@@ -812,13 +812,18 @@ let missingManagerPhone = '';
 
     // ==================== 초기화 ====================
     window.onload = async function() {
-        // Firestore 준비 대기 (최대 3초)
+        // 테스트용: 로그인 생략
+        currentUser.kakaoId = '4801334897';
+        localStorage.setItem('realKakaoId', '4801334897');
+        initializeSession();
+        checkMidnightReset();
+        preventBackButton();
+        await verifyStudent();
+        return;
+
         if (!window.fsReady) {
-            await Promise.race([
-                new Promise(resolve => window.addEventListener('fsReady', resolve, { once: true })),
-                new Promise(resolve => setTimeout(resolve, 3000))
-            ]);
-        }
+        await new Promise(resolve => window.addEventListener('fsReady', resolve, { once: true }));
+    }
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
 
