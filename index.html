@@ -44,25 +44,7 @@
   window.dispatchEvent(new Event('fsReady'));
 </script>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBaCpQKykViq6526dCJ8mEYbUZqyg5-NUo",
-    authDomain: "my-attendance-8122d.firebaseapp.com",
-    projectId: "my-attendance-8122d",
-    storageBucket: "my-attendance-8122d.firebasestorage.app",
-    messagingSenderId: "994601190154",
-    appId: "1:994601190154:web:d702adbf20039f73ee70f3"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  window.db = getFirestore(app);
-  window.fsDoc = doc;
-  window.fsGetDoc = getDoc;
-  window.fsSetDoc = setDoc;
-  window.fsUpdateDoc = updateDoc;
-  window.fsOnSnapshot = onSnapshot;
-
-  console.log('Firestore 초기화 완료');
-</script>
+  
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
 
