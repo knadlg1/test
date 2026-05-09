@@ -830,10 +830,13 @@ let missingManagerPhone = '';
 
     // ==================== 초기화 ====================
     window.onload = async function() {
-        // Firestore 준비 대기
-    if (!window.fsReady) {
-        await new Promise(resolve => window.addEventListener('fsReady', resolve, { once: true }));
-    }
+        // Firestore 준비 대기 (최대 3초)
+        if (!window.fsReady) {
+            await Promise.race([
+                new Promise(resolve => window.addEventListener('fsReady', resolve, { once: true })),
+                new Promise(resolve => setTimeout(resolve, 3000))
+            ]);
+        }
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
 
