@@ -888,7 +888,12 @@ let missingManagerPhone = '';
 
     // ==================== 카카오 로그인 ====================
     function loginWithKakao() {
-       
+        // 테스트용 임시 로그인
+        currentUser.kakaoId = '4801334897';
+        localStorage.setItem('realKakaoId', '4801334897');
+        initializeSession();
+        verifyStudent();
+        return;
         const REST_API_KEY = 'ca34b3c2a0cf2d0fe87d9f18b39aa8d8';
         const REDIRECT_URI = 'https://knadlg1.github.io/sahanurse-attendance/';
         const kakaoURL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
