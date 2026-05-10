@@ -877,10 +877,7 @@ function loginWithKakao() {
     const kakaoURL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
     window.location.href = kakaoURL;
 }
-                    <button onclick="window.location.href='${kakaoURL}'" style="background:white;color:#3C1E1E;padding:15px 30px;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:10px;">👉 여기를 클릭, 로그인</button>
-                </div>`;
-        }
-    }
+                   
 
     // ==================== 세션 관리 ====================
     function initializeSession() {
