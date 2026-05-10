@@ -860,10 +860,7 @@ let missingManagerPhone = '';
                     const cached = localStorage.getItem('cachedUserData');
                     if (cached) {
                         Object.assign(currentUser, JSON.parse(cached));
-                        showLoader(false);
-                        showMainSection();
-                        Promise.all([checkTodayStatus(), loadStudentStats()]);
-                        verifyStudent(true);
+                        await verifyStudent();
                     } else {
                         await verifyStudent();
                     }
