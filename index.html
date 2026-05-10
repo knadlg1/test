@@ -901,7 +901,7 @@ let missingManagerPhone = '';
                    
 
     // ==================== 세션 관리 ====================
-    function initializeSession() {
+    async function initializeSession() {
         const sessionStartTime = sessionStorage.getItem('sessionStartTime');
         const now = Date.now();
         if (!sessionStartTime) {
