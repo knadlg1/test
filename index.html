@@ -1880,17 +1880,21 @@ async function loadIntervals() {
     function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
 
     async function fetchWithRetry(url, options, retries=3) {
-        for (let i=0; i<retries; i++) {
-            try {
-                const response = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body:options.body });
-                if (response.ok) return response;
-                if (i === retries-1) throw new Error('서버 오류: ' + response.status);
-            } catch(error) {
-                if (i === retries-1) throw error;
-                await new Promise(resolve => setTimeout(resolve, 1000*(i+1)));
-            }
+    for (let i=0; i<retries; i++) {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 15000);
+        try {
+            const response = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body:options.body, signal:controller.signal });
+            clearTimeout(tid);
+            if (response.ok) return response;
+            if (i === retries-1) throw new Error('서버 오류: ' + response.status);
+        } catch(error) {
+            clearTimeout(tid);
+            if (i === retries-1) throw error;
+            await new Promise(resolve => setTimeout(resolve, 1000*(i+1)));
         }
     }
+}
 
         function shortDate(str) {
         if (!str) return str;
