@@ -1891,7 +1891,12 @@ async function loadIntervals() {
         const controller = new AbortController();
         const tid = setTimeout(() => controller.abort(), 15000);
         try {
-            const response = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body:options.body, signal:controller.signal });
+            const response = await fetch(url, {
+                method:'POST',
+                headers:{'Content-Type':'text/plain'},
+                body:options.body,
+                signal:controller.signal
+            });
             clearTimeout(tid);
             if (response.ok) return response;
             if (i === retries-1) throw new Error('서버 오류: ' + response.status);
@@ -2049,13 +2054,10 @@ async function submitNewStudent() {
     if (!window.PublicKeyCredential) return true;
     const credId = localStorage.getItem('webAuthnCredId');
     if (!credId) {
-        // 이 기기에 패스키 없음 → 새로 등록
         return await registerWebAuthn(kakaoId, name);
     }
-    // 패스키 있음 → 인증
     const ok = await verifyWebAuthn(kakaoId);
     if (!ok) {
-        // 인증 실패 (패스키 삭제됐을 경우) → 재등록
         return await registerWebAuthn(kakaoId, name);
     }
     return true;
