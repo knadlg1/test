@@ -812,7 +812,8 @@ let missingManagerPhone = '';
 
 
 
-        if (!window.fsReady) {
+        window.onload = async function() {
+    if (!window.fsReady) {
         await new Promise(resolve => window.addEventListener('fsReady', resolve, { once: true }));
     }
         const urlParams = new URLSearchParams(window.location.search);
@@ -868,23 +869,14 @@ let missingManagerPhone = '';
     };
 
     // ==================== 카카오 로그인 ====================
-    function loginWithKakao() {
-        // 테스트용 임시 로그인
-        currentUser.kakaoId = '4801334897';
-        localStorage.setItem('realKakaoId', '4801334897');
-        initializeSession();
-        verifyStudent();
-        return;
-        const REST_API_KEY = 'ca34b3c2a0cf2d0fe87d9f18b39aa8d8';
-        const REDIRECT_URI = 'https://knadlg1.github.io/sahanurse-attendance/';
-        const kakaoURL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
-        try {
-            if (window.top !== window.self) window.top.location.href = kakaoURL;
-            else window.location.href = kakaoURL;
-        } catch(e) {
-            document.getElementById('login-section').innerHTML = `
-                <div style="padding:20px;background:#FEE500;border-radius:12px;text-align:center;">
-                    <h3>카카오 로그인 필요</h3>
+    // ==================== 카카오 로그인 ====================
+function loginWithKakao() {
+    if (remainingTime <= 0) { alert('세션 만료. 새로고침 해주세요.'); return; }
+    const REST_API_KEY = 'ca34b3c2a0cf2d0fe87d9f18b39aa8d8';
+    const REDIRECT_URI = 'https://knadlg1.github.io/sahanurse-attendance/';
+    const kakaoURL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+    window.location.href = kakaoURL;
+}
                     <button onclick="window.location.href='${kakaoURL}'" style="background:white;color:#3C1E1E;padding:15px 30px;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:10px;">👉 여기를 클릭, 로그인</button>
                 </div>`;
         }
