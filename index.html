@@ -825,7 +825,7 @@ let missingManagerPhone = '';
             try {
                 const response = await fetch(CONFIG.GAS_URL, {
                     method:'POST', headers:{'Content-Type':'text/plain'},
-                    body: JSON.stringify({ action:'getKakaoUser', code, redirect_uri:'https://knadlg1.github.io/sahanurse-attendance/' })
+                    body: JSON.stringify({ action:'getKakaoUser', code, redirect_uri:'https://knadlg1.github.io/test/' })
                 });
                 const result = await response.json();
                                 if (result.kakaoId) {
