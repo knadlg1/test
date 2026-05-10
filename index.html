@@ -901,7 +901,7 @@ let missingManagerPhone = '';
                    
 
     // ==================== 세션 관리 ====================
-    async function initializeSession() {
+    function initializeSession() {
         const sessionStartTime = sessionStorage.getItem('sessionStartTime');
         const now = Date.now();
         if (!sessionStartTime) {
@@ -912,10 +912,9 @@ let missingManagerPhone = '';
             if (elapsed < CONFIG.SESSION_DURATION) {
                 remainingTime = CONFIG.SESSION_DURATION - elapsed;
                 startSessionTimer();
-                const savedUser = sessionStorage.getItem('currentUser');
+                            const savedUser = sessionStorage.getItem('currentUser');
                 if (savedUser) {
                     currentUser = JSON.parse(savedUser);
-                    await verifyStudent();
                 }
             } else { expireSession(); }
         }
