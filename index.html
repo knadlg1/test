@@ -7,7 +7,7 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js"></script>
     <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -26,6 +26,11 @@
   window.db = db;
   window.auth = auth;
   window.fsDoc = doc;
+  window.fsCollection = collection;
+  window.fsQuery = query;
+  window.fsWhere = where;
+  window.fsGetDocs = getDocs;
+  window.fsOrderBy = orderBy;
   window.fsGetDoc = getDoc;
   window.fsSetDoc = setDoc;
   window.fsUpdateDoc = updateDoc;
@@ -1070,96 +1075,42 @@ let missingManagerPhone = '';
         }
     }
 
-    // ==================== 출결 상태 확인 ====================
     async function checkTodayStatus() {
         const inBtn  = document.getElementById('check-in-btn');
         const outBtn = document.getElementById('check-out-btn');
         const badge  = document.getElementById('new-status-badge');
-
-        // 서버 응답 전 출근 버튼 먼저 표시
         inBtn.style.display = 'block';
         inBtn.disabled = false;
         inBtn.textContent = '출근';
-
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, {
-                body: JSON.stringify({ action:'getTodayStatus', kakaoId:currentUser.kakaoId })
-            });
-            const result = await response.json();
-
-            const missingList = (Array.isArray(result.missingRecords) && result.missingRecords.length > 0)
-    ? result.missingRecords
-    : (result.missingRecord ? [result.missingRecord] : []);
-
-function setMissingAlertText(rec) {
-        const t = rec.type;
-        let b = '';
-        if (t === '출근' || t === '출,퇴근') b += '<span style="background:#10b981;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;">출근 누락</span>';
-        if (t === '퇴근' || t === '출,퇴근') b += '<span style="background:#ef4444;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;margin-left:6px;">퇴근 누락</span>';
-        document.getElementById('missing-date-badge').textContent = '📅 ' + rec.date;
-        document.getElementById('missing-alert-text').innerHTML = `<div style="text-align:center;">${b}</div>`;
-        // 학생/담당자 서명 모달에도 날짜 동기화
-        const badge = '📅 ' + rec.date;
-        const sb = document.getElementById('missing-student-date-badge');
-        const mb = document.getElementById('missing-manager-date-badge');
-        if (sb) sb.textContent = badge;
-        if (mb) mb.textContent = badge;
-    }
-
-    if (missingList.length > 0) {
-        window.currentMissingRecords = missingList;
-        const bannerContainer = document.getElementById('missing-banner-container');
-        bannerContainer.innerHTML = '';
-        missingList.forEach(rec => {
-            const div = document.createElement('div');
-            div.className = 'missing-banner-item';
-            div.textContent = `🚨 [${rec.date}] ${rec.type} 누락 (눌러서 서명)`;
-            div.onclick = () => {
-                window.currentMissingRecord = rec;
-                setMissingAlertText(rec);
-                document.getElementById('missing-alert-modal').style.display = 'flex';
-            };
-            bannerContainer.appendChild(div);
-        });
-        window.currentMissingRecord = missingList[0];
-        setMissingAlertText(missingList[0]);
-        document.getElementById('missing-alert-modal').style.display = 'flex';
-    } else {
-        window.currentMissingRecords = [];
-        window.currentMissingRecord = null;
-        document.getElementById('missing-banner-container').innerHTML = '';
-    }
-
-
-                        if (result.checkIn && result.checkIn !== "") {
-                // 출근 완료 → 출근 버튼 회색·비활성, 시간 표시
-                inBtn.style.display = 'block';
+            const now = new Date();
+            const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+            const docRef = window.fsDoc(window.db, 'attendance', String(currentUser.kakaoId) + '_' + todayStr);
+            const docSnap = await window.fsGetDoc(docRef);
+            const inTime  = docSnap.exists() ? (docSnap.data().inTime  || '') : '';
+            const outTime = docSnap.exists() ? (docSnap.data().outTime || '') : '';
+            if (inTime !== '') {
                 inBtn.disabled = true;
-                inBtn.textContent = '출근 ' + result.checkIn;
+                inBtn.textContent = '출근 ' + inTime;
                 inBtn.style.background = '#9ca3af';
                 setCharacter('chick');
                 badge.className = 'new-status-badge working';
                 badge.textContent = '실습 중';
-
-                if (result.checkOut && result.checkOut !== "") {
-                    // 퇴근 완료 → 퇴근 버튼도 회색·비활성, 시간 표시
+                if (outTime !== '') {
                     outBtn.style.display = 'block';
                     outBtn.disabled = true;
-                    outBtn.textContent = '퇴근 ' + result.checkOut;
+                    outBtn.textContent = '퇴근 ' + outTime;
                     outBtn.style.background = '#9ca3af';
                     setCharacter('egg');
                     badge.className = 'new-status-badge done';
                     badge.textContent = '실습 완료';
                 } else {
-                    // 출근 후 미퇴근 → 퇴근 버튼 활성
                     outBtn.style.display = 'block';
                     outBtn.disabled = false;
                     outBtn.textContent = '퇴근';
                     outBtn.style.background = '';
                 }
             } else {
-                // 출근 전 → 출근 활성, 퇴근 비활성
-                inBtn.style.display = 'block';
                 inBtn.disabled = false;
                 inBtn.textContent = '출근';
                 inBtn.style.background = '';
@@ -1172,14 +1123,6 @@ function setMissingAlertText(rec) {
             }
         } catch(error) {
             console.error('상태 확인 오류:', error);
-            inBtn.style.display = 'block';
-            inBtn.disabled = false;
-            inBtn.textContent = '출근';
-            inBtn.style.background = '';
-            outBtn.style.display = 'block';
-            outBtn.disabled = true;
-            outBtn.textContent = '퇴근';
-            outBtn.style.background = '';
         }
     }
 
@@ -1643,20 +1586,30 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
     function closeHistoryModal() { closeBottomModal('history-bottom-modal'); }
 
     async function fetchHistory(type) {
+        const listEl = document.getElementById('history-bottom-list');
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'getHistory', kakaoId:currentUser.kakaoId, type }) });
-            const result = await response.json();
-            const listEl = document.getElementById('history-bottom-list');
-                        if (result.status==='success' && result.data && result.data.length>0) {
+            const q = window.fsQuery(
+                window.fsCollection(window.db, 'attendance'),
+                window.fsWhere('kakaoId', '==', String(currentUser.kakaoId)),
+                window.fsOrderBy('date', 'desc')
+            );
+            const snap = await window.fsGetDocs(q);
+            const data = [];
+            snap.forEach(d => data.push(d.data()));
+            if (data.length > 0) {
                 listEl.innerHTML = '';
-                result.data.forEach(rec => {
-                    listEl.innerHTML += `<div class="record-row"><div><div class="record-label">${rec.desc||''}</div><div class="record-date">${rec.date||''}</div></div><span class="record-status rs-done">완료</span></div>`;
+                data.forEach(rec => {
+                    const div = document.createElement('div');
+                    div.style = 'padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px;';
+                    div.innerHTML = `<span style="font-weight:600;">${rec.date}</span> &nbsp; 출근 ${rec.inTime||'-'} / 퇴근 ${rec.outTime||'-'}`;
+                    listEl.appendChild(div);
                 });
             } else {
-                listEl.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:13px;padding:20px;">내역이 없습니다.</div>';
+                listEl.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;">기록이 없습니다.</div>';
             }
-        } catch(e) {
-            document.getElementById('history-bottom-list').innerHTML = '<div style="text-align:center;color:#ef4444;font-size:13px;padding:20px;">불러오기 실패.</div>';
+        } catch(error) {
+            console.error('기록 조회 오류:', error);
+            listEl.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px;">불러오기 실패</div>';
         }
     }
 
@@ -1914,12 +1867,23 @@ async function submitNewStudent() {
     async function loadMonthlyRecords(startDate, endDate) {
         showLoader(true);
         try {
-                        const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'getMonthlyRecords', kakaoId:currentUser.kakaoId, targetStartDate:startDate, targetEndDate:endDate }) });
-            const result = await response.json();
+            const q = window.fsQuery(
+                window.fsCollection(window.db, 'attendance'),
+                window.fsWhere('kakaoId', '==', String(currentUser.kakaoId)),
+                window.fsWhere('date', '>=', startDate),
+                window.fsWhere('date', '<=', endDate),
+                window.fsOrderBy('date', 'asc')
+            );
+            const snap = await window.fsGetDocs(q);
+            const records = [];
+            snap.forEach(d => records.push(d.data()));
             showLoader(false);
-            if (result.status === 'success') renderRecordList(result.records);
-            else document.getElementById('record-list').innerHTML='<p style="text-align:center;color:#ef4444;">기록을 불러올 수 없습니다.</p>';
-        } catch(e) { showLoader(false); }
+            renderRecordList(records);
+        } catch(error) {
+            showLoader(false);
+            console.error('월별 기록 오류:', error);
+            document.getElementById('record-list').innerHTML = '<p style="text-align:center;color:#ef4444;">기록을 불러올 수 없습니다.</p>';
+        }
     }
         function renderRecordList(records) {
         const listDiv = document.getElementById('record-list');
@@ -2389,10 +2353,9 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
         const opt = hospitalEl.options[hospitalEl.selectedIndex];
         const btn = document.getElementById('hospital-submit-btn'); btn.disabled=true;
         try {
-            const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'updateStudentHospital', targetKakaoId:studentId, hospitalName:opt.text, hospitalLat:opt.dataset.lat, hospitalLon:opt.dataset.lon }) });
-            const result = await response.json();
-            if (result.status==='success') { alert('정정 완료!'); closeHospitalEditModal(); }
-            else { alert('정정 실패: '+result.message); }
+                        const docRef = window.fsDoc(window.db, 'students', String(studentId));
+            await window.fsUpdateDoc(docRef, { hospital: opt.text, hospitalLat: parseFloat(opt.dataset.lat), hospitalLon: parseFloat(opt.dataset.lon) });
+            alert('정정 완료!'); closeHospitalEditModal();
         } catch(e) { alert('서버 오류.'); }
         finally { btn.disabled=false; }
     }
