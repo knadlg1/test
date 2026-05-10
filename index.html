@@ -284,7 +284,7 @@
         <div class="login-logo">Here</div>
         <div class="login-sub">실습 출결 관리</div>
         <button class="btn-kakao" onclick="loginWithKakao()">카카오톡으로 시작하기</button>
-        <button class="btn-register" onclick="openRegisterModal()" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#fff;color:#6c63ff;border:2px solid #6c63ff;border-radius:14px;cursor:pointer;margin-top:10px;">신규 등록</button>
+        <button class="btn-register" onclick="openRegisterModal()" style="padding:6px 14px;font-size:12px;font-weight:600;background:transparent;color:#aaa;border:1px solid #ddd;border-radius:8px;cursor:pointer;margin-top:8px;">신규 등록</button>
         <p class="login-note">※ 등록 후 원장님 승인이 필요합니다</p>
     </div>
 </div>
@@ -950,8 +950,8 @@ let missingManagerPhone = '';
                 const s = docSnap.data();
                 if (s.status === 'pending') {
                     result = { status: 'pending', name: s.name };
-                } else {
-                    result = { status: 'found', ...s };
+                                } else {
+                    result = { ...s, status: 'found' };
                 }
             }
         } catch(fsErr) {
