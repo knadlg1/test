@@ -947,7 +947,12 @@ let missingManagerPhone = '';
             const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
             const docSnap = await window.fsGetDoc(docRef);
             if (docSnap.exists()) {
-                result = { status: 'found', ...docSnap.data() };
+                const s = docSnap.data();
+                if (s.status === 'pending') {
+                    result = { status: 'pending', name: s.name };
+                } else {
+                    result = { status: 'found', ...s };
+                }
             }
         } catch(fsErr) {
             console.warn('Firestore 조회 실패, GAS로 폴백:', fsErr);
@@ -1780,6 +1785,10 @@ async function submitNewStudent() {
         const regResult = await regRes.json();
         showLoader(false);
         if (regResult.status === 'success' || regResult.status === 'pending') {
+            try {
+                const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
+                await window.fsSetDoc(docRef, { name, phone, status: 'pending', kakaoId: String(currentUser.kakaoId) });
+            } catch(e) { console.warn('Firestore 저장 실패:', e); }
             document.getElementById('register-step1').style.display = 'none';
             document.getElementById('register-step2').style.display = 'block';
         } else {
