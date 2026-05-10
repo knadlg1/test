@@ -2016,31 +2016,24 @@ async function submitNewStudent() {
 
     async function verifyWebAuthn(kakaoId) {
     if (!window.PublicKeyCredential) return true;
-    let credId = localStorage.getItem('webAuthnCredId');
-    if (!credId) {
-        try {
-            const docSnap = await window.fsGetDoc(window.fsDoc(window.db, 'students', String(kakaoId)));
-            if (docSnap.exists() && docSnap.data().webAuthnCredId) {
-                credId = docSnap.data().webAuthnCredId;
-                localStorage.setItem('webAuthnCredId', credId);
-            }
-        } catch(e) {}
-    }
-    if (!credId) return false;
     try {
         const challenge = new Uint8Array(32);
         crypto.getRandomValues(challenge);
-        const credIdBytes = Uint8Array.from(atob(credId), c => c.charCodeAt(0));
         const assertion = await navigator.credentials.get({
             publicKey: {
                 challenge,
                 rpId: location.hostname,
-                allowCredentials: [{ type: 'public-key', id: credIdBytes }],
+                allowCredentials: [],
                 userVerification: 'required',
                 timeout: 60000
             }
         });
-        return !!assertion;
+        if (assertion) {
+            const newCredId = btoa(String.fromCharCode(...new Uint8Array(assertion.rawId)));
+            localStorage.setItem('webAuthnCredId', newCredId);
+            return true;
+        }
+        return false;
     } catch(e) {
         console.warn('WebAuthn 인증 실패:', e);
         return false;
