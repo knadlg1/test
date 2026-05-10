@@ -1400,7 +1400,7 @@ let missingManagerPhone = '';
                 } else if (inv.noRecords) {
                     action = '<span style="font-size:11px;color:#94a3b8;font-weight:600;">기록 없음</span>';
                 } else {
-                    action = `<button class="interval-sign-btn-new" onclick="closeBottomModal('new-status-modal');openSignatureUI('${inv.startDate}','${inv.endDate}','${inv.intervalStr||dateStr}')">서명하기</button>`;
+                    action = `<button class="interval-sign-btn-new" onclick="closeBottomModal('new-status-modal');startBsSign(${realIdx})">서명하기</button>`;
                 }
 
                 list.innerHTML += `<div class="interval-card-new" style="border-color:${borderColor};"><div><div class="interval-badge-new" style="${badgeStyle}">${realIdx+1}회차</div><div class="interval-date-new">${dateStr}</div></div>${action}</div>`;
