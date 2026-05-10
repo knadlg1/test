@@ -810,16 +810,7 @@ let missingManagerPhone = '';
 
     Kakao.init(CONFIG.KAKAO_KEY);
 
-    // ==================== 초기화 ====================
-    window.onload = async function() {
-        // 테스트용: 로그인 생략
-        currentUser.kakaoId = '4801334897';
-        localStorage.setItem('realKakaoId', '4801334897');
-        initializeSession();
-        checkMidnightReset();
-        preventBackButton();
-        await verifyStudent();
-        return;
+
 
         if (!window.fsReady) {
         await new Promise(resolve => window.addEventListener('fsReady', resolve, { once: true }));
