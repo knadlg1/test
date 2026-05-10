@@ -2009,42 +2009,55 @@ async function submitNewStudent() {
     }
 
     async function verifyWebAuthn(kakaoId) {
-        if (!window.PublicKeyCredential) return true; // 미지원시 통과
-        const credId = localStorage.getItem('webAuthnCredId');
-        if (!credId) return false;
+    if (!window.PublicKeyCredential) return true;
+    let credId = localStorage.getItem('webAuthnCredId');
+    if (!credId) {
         try {
-            const challenge = new Uint8Array(32);
-            crypto.getRandomValues(challenge);
-
-            const credIdBytes = Uint8Array.from(atob(credId), c => c.charCodeAt(0));
-
-            const assertion = await navigator.credentials.get({
-                publicKey: {
-                    challenge,
-                    rpId: location.hostname,
-                    allowCredentials: [{ type: 'public-key', id: credIdBytes }],
-                    userVerification: 'required',
-                    timeout: 60000
-                }
-            });
-
-            return !!assertion;
-        } catch(e) {
-            console.warn('WebAuthn 인증 실패:', e);
-            return false;
-        }
+            const docSnap = await window.fsGetDoc(window.fsDoc(window.db, 'students', String(kakaoId)));
+            if (docSnap.exists() && docSnap.data().webAuthnCredId) {
+                credId = docSnap.data().webAuthnCredId;
+                localStorage.setItem('webAuthnCredId', credId);
+            }
+        } catch(e) {}
     }
+    if (!credId) return false;
+    try {
+        const challenge = new Uint8Array(32);
+        crypto.getRandomValues(challenge);
+        const credIdBytes = Uint8Array.from(atob(credId), c => c.charCodeAt(0));
+        const assertion = await navigator.credentials.get({
+            publicKey: {
+                challenge,
+                rpId: location.hostname,
+                allowCredentials: [{ type: 'public-key', id: credIdBytes }],
+                userVerification: 'required',
+                timeout: 60000
+            }
+        });
+        return !!assertion;
+    } catch(e) {
+        console.warn('WebAuthn 인증 실패:', e);
+        return false;
+    }
+}
 
     async function ensureWebAuthn(kakaoId, name) {
-        if (!window.PublicKeyCredential) return true; // 미지원 기기 통과
-        const credId = localStorage.getItem('webAuthnCredId');
-        if (!credId) {
-            // 미등록 → 등록 시도
-            const ok = await registerWebAuthn(kakaoId, name);
-            return ok;
-        }
-        // 등록됨 → 인증
-        return await verifyWebAuthn(kakaoId);
+    if (!window.PublicKeyCredential) return true;
+    let credId = localStorage.getItem('webAuthnCredId');
+    if (!credId) {
+        try {
+            const docSnap = await window.fsGetDoc(window.fsDoc(window.db, 'students', String(kakaoId)));
+            if (docSnap.exists() && docSnap.data().webAuthnCredId) {
+                credId = docSnap.data().webAuthnCredId;
+                localStorage.setItem('webAuthnCredId', credId);
+            }
+        } catch(e) {}
+    }
+    if (!credId) {
+        const ok = await registerWebAuthn(kakaoId, name);
+        return ok;
+    }
+    return await verifyWebAuthn(kakaoId);
     }
 
     function preventBackButton() {
