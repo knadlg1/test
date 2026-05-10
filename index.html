@@ -2042,22 +2042,19 @@ async function submitNewStudent() {
 
     async function ensureWebAuthn(kakaoId, name) {
     if (!window.PublicKeyCredential) return true;
-    let credId = localStorage.getItem('webAuthnCredId');
+    const credId = localStorage.getItem('webAuthnCredId');
     if (!credId) {
-        try {
-            const docSnap = await window.fsGetDoc(window.fsDoc(window.db, 'students', String(kakaoId)));
-            if (docSnap.exists() && docSnap.data().webAuthnCredId) {
-                credId = docSnap.data().webAuthnCredId;
-                localStorage.setItem('webAuthnCredId', credId);
-            }
-        } catch(e) {}
+        // 이 기기에 패스키 없음 → 새로 등록
+        return await registerWebAuthn(kakaoId, name);
     }
-    if (!credId) {
-        const ok = await registerWebAuthn(kakaoId, name);
-        return ok;
+    // 패스키 있음 → 인증
+    const ok = await verifyWebAuthn(kakaoId);
+    if (!ok) {
+        // 인증 실패 (패스키 삭제됐을 경우) → 재등록
+        return await registerWebAuthn(kakaoId, name);
     }
-    return await verifyWebAuthn(kakaoId);
-    }
+    return true;
+}
 
     function preventBackButton() {
         history.pushState(null,null,location.href);
