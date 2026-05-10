@@ -869,14 +869,13 @@ let missingManagerPhone = '';
     };
 
     // ==================== 카카오 로그인 ====================
-    // ==================== 카카오 로그인 ====================
-function loginWithKakao() {
-    if (remainingTime <= 0) { alert('세션 만료. 새로고침 해주세요.'); return; }
-    const REST_API_KEY = 'ca34b3c2a0cf2d0fe87d9f18b39aa8d8';
-    const REDIRECT_URI = 'https://knadlg1.github.io/sahanurse-attendance/';
-    const kakaoURL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
-    window.location.href = kakaoURL;
-}
+    function loginWithKakao() {
+        if (remainingTime <= 0) { alert('세션 만료. 새로고침 해주세요.'); return; }
+        const REST_API_KEY = 'ca34b3c2a0cf2d0fe87d9f18b39aa8d8';
+        const REDIRECT_URI = 'https://knadlg1.github.io/sahanurse-attendance/';
+        const kakaoURL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+        window.location.href = kakaoURL;
+    }
                    
 
     // ==================== 세션 관리 ====================
