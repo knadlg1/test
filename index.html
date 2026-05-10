@@ -1653,6 +1653,11 @@ function closeBsIncomplete(action) {
 }
 
 function computeIntervals(practiceStart, practiceEnd) {
+    function fmt(d) {
+        return d.getFullYear() + '-' +
+            String(d.getMonth()+1).padStart(2,'0') + '-' +
+            String(d.getDate()).padStart(2,'0');
+    }
     const intervals = [];
     const startD = new Date(practiceStart + 'T00:00:00');
     const endD   = new Date(practiceEnd   + 'T00:00:00');
@@ -1663,8 +1668,8 @@ function computeIntervals(practiceStart, practiceEnd) {
     while (friday <= endD) {
         const monday = new Date(friday); monday.setDate(friday.getDate() - 4);
         const actualStart = monday < startD ? new Date(startD) : new Date(monday);
-        const startStr = actualStart.toISOString().slice(0,10);
-        const endStr   = friday.toISOString().slice(0,10);
+        const startStr = fmt(actualStart);
+        const endStr   = fmt(friday);
         intervals.push({ weekNum, startDate:startStr, endDate:endStr, intervalStr:`${startStr.slice(5)} ~ ${endStr.slice(5)}` });
         weekNum++;
         friday.setDate(friday.getDate() + 7);
