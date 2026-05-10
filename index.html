@@ -960,8 +960,10 @@ let missingManagerPhone = '';
     }
 
         async function verifyStudent(silent = false) {
-    try {
-        if (!silent) showLoader(true);
+        if (!window.db) await new Promise(r => window.addEventListener('fsReady', r, {once:true}));
+        try {
+            const deviceId = generateDeviceId();
+            if (!silent) showLoader(true);
 
         let result = null;
 
