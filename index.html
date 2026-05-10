@@ -278,14 +278,39 @@
 
 <div class="loader" id="loader"></div>
 
-<!-- ===================== 로그인 화면 ===================== -->
 <div id="login-section">
     <div class="login-card">
         <div id="session-expired">⚠️ 세션(2시간) 만료<br>페이지 새로고침 필요!</div>
         <div class="login-logo">Here</div>
         <div class="login-sub">실습 출결 관리</div>
         <button class="btn-kakao" onclick="loginWithKakao()">카카오톡으로 시작하기</button>
-        <p class="login-note">※ 휴대폰 변경 시 학원으로 연락!</p>
+        <button class="btn-register" onclick="openRegisterModal()" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#fff;color:#6c63ff;border:2px solid #6c63ff;border-radius:14px;cursor:pointer;margin-top:10px;">신규 등록</button>
+        <p class="login-note">※ 등록 후 원장님 승인이 필요합니다</p>
+    </div>
+</div>
+
+<!-- 신규 등록 모달 -->
+<div class="modal-overlay" id="register-modal">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">신규 등록</div>
+        <div id="register-step1">
+            <label class="form-label">이름</label>
+            <input class="form-input" id="reg-name" type="text" placeholder="홍길동 (띄어쓰기 주의)">
+            <label class="form-label">휴대폰번호</label>
+            <input class="form-input" id="reg-phone" type="tel" placeholder="01012345678">
+            <div class="otp-row">
+                <input id="reg-otp" type="number" placeholder="인증번호 6자리">
+                <button onclick="sendRegisterOTP()">문자 받기</button>
+            </div>
+            <button class="form-submit" onclick="submitNewStudent()">등록 신청</button>
+        </div>
+        <div id="register-step2" style="display:none;text-align:center;padding:20px 0;">
+            <div style="font-size:40px;margin-bottom:12px;">✅</div>
+            <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">등록 신청 완료!</div>
+            <div style="font-size:13px;color:#666;">원장님 승인 후 이용 가능합니다.</div>
+        </div>
+        <button class="modal-close" onclick="closeRegisterModal()">닫기</button>
     </div>
 </div>
 
@@ -912,103 +937,78 @@ let missingManagerPhone = '';
     }
 
         async function verifyStudent(silent = false) {
+    try {
+        if (!silent) showLoader(true);
+
+        let result = null;
+
+        // Firestore에서 먼저 조회
         try {
-            const deviceId = generateDeviceId();
-            if (!silent) showLoader(true);
-
-            let result = null;
-
-            // Firestore에서 먼저 조회
-            try {
-                const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
-                const docSnap = await window.fsGetDoc(docRef);
-                if (docSnap.exists()) {
-                    const s = docSnap.data();
-                    if (s.deviceId && s.deviceId !== '' && s.deviceId !== String(deviceId)) {
-                        result = { status: 'device_mismatch' };
-                    } else {
-                        if (!s.deviceId || s.deviceId === '') {
-                            await window.fsUpdateDoc(docRef, { deviceId: String(deviceId) });
-                        }
-                        result = { status: 'found', ...s };
-                    }
-                }
-            } catch(fsErr) {
-                console.warn('Firestore 조회 실패, GAS로 폴백:', fsErr);
+            const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
+            const docSnap = await window.fsGetDoc(docRef);
+            if (docSnap.exists()) {
+                result = { status: 'found', ...docSnap.data() };
             }
-
-            // Firestore에 없으면 GAS로 폴백
-            if (!result) {
-                const response = await fetchWithRetry(CONFIG.GAS_URL, {
-                    body: JSON.stringify({ action:'checkStudent', kakaoId:currentUser.kakaoId, deviceId })
-                });
-                result = await response.json();
-                // GAS 성공시 Firestore에 저장
-                if (result.status === 'found') {
-                    try {
-                        const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
-                        await window.fsSetDoc(docRef, result);
-                    } catch(e) {}
-                }
-            }
-
-            if (result.status === 'found') {
-                currentUser.name        = result.name;
-                currentUser.phone       = result.phone;
-                currentUser.hospital    = result.hospital;
-                currentUser.hospitalLat = result.hospitalLat;
-                currentUser.hospitalLon = result.hospitalLon;
-                currentUser.intervals   = result.intervals;
-                sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-                localStorage.setItem('cachedUserData', JSON.stringify(currentUser));
-
-                if (!silent) {
-                    showLoader(false);
-                    showMainSection();
-                    Promise.all([checkTodayStatus(), loadStudentStats()]);
-                } else {
-                    document.getElementById('user-name').textContent     = currentUser.name     || '';
-                    document.getElementById('user-hospital').textContent = currentUser.hospital || '';
-                }
-            } else if (result.status === 'device_mismatch') {
-                if (!silent) showLoader(false);
-                alert('등록된 기기가 아닙니다.\n학원으로 문의해주세요.');
-            } else {
-                if (silent) return;
-                showLoader(false);
-                const name = prompt('이름\n띄어쓰기,오타 주의!');
-                if (!name) { location.reload(); return; }
-                const phone = prompt('전화번호\n(예:01012345678)');
-                if (!phone) { location.reload(); return; }
-                localStorage.setItem('registeredUser', JSON.stringify({name, phone}));
-                showLoader(true);
-                const regResponse = await fetchWithRetry(CONFIG.GAS_URL, {
-                    body: JSON.stringify({ action:'registerStudent', kakaoId:currentUser.kakaoId, deviceId:generateDeviceId(), name, phone })
-                });
-                const regResult = await regResponse.json();
-                if (regResult.status === 'success') {
-                    currentUser.name        = regResult.name;
-                    currentUser.phone       = regResult.phone;
-                    currentUser.hospital    = regResult.hospital;
-                    currentUser.hospitalLat = regResult.hospitalLat || 35.0817;
-                    currentUser.hospitalLon = regResult.hospitalLon || 128.9883;
-                    sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    localStorage.setItem('cachedUserData', JSON.stringify(currentUser));
-                    alert(`✅ ${currentUser.name}님 등록 완료!\n실습병원: ${currentUser.hospital}`);
-                    showLoader(false);
-                    showMainSection();
-                    setTimeout(() => Promise.all([checkTodayStatus(), loadStudentStats()]), 500);
-                } else {
-                    showLoader(false);
-                    alert('❌ 등록 실패\n학원으로 문의해주세요.');
-                    localStorage.removeItem('registeredUser');
-                }
-            }
-        } catch(error) {
-            console.error('학생 확인 오류:', error);
-            if (!silent) showLoader(false);
+        } catch(fsErr) {
+            console.warn('Firestore 조회 실패, GAS로 폴백:', fsErr);
         }
+
+        // Firestore에 없으면 GAS로 폴백
+        if (!result) {
+            const response = await fetchWithRetry(CONFIG.GAS_URL, {
+                body: JSON.stringify({ action:'checkStudent', kakaoId:currentUser.kakaoId })
+            });
+            result = await response.json();
+            if (result.status === 'found') {
+                try {
+                    const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
+                    await window.fsSetDoc(docRef, result);
+                } catch(e) {}
+            }
+        }
+
+        if (result.status === 'found') {
+            // WebAuthn 인증
+            if (!silent) {
+                const authOk = await ensureWebAuthn(currentUser.kakaoId, result.name);
+                if (!authOk) {
+                    showLoader(false);
+                    alert('생체 인증에 실패했습니다.\n다시 시도해주세요.');
+                    return;
+                }
+            }
+
+            currentUser.name        = result.name;
+            currentUser.phone       = result.phone;
+            currentUser.hospital    = result.hospital;
+            currentUser.hospitalLat = result.hospitalLat;
+            currentUser.hospitalLon = result.hospitalLon;
+            currentUser.intervals   = result.intervals;
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+            localStorage.setItem('cachedUserData', JSON.stringify(currentUser));
+
+            if (!silent) {
+                showLoader(false);
+                showMainSection();
+                Promise.all([checkTodayStatus(), loadStudentStats()]);
+            } else {
+                document.getElementById('user-name').textContent     = currentUser.name     || '';
+                document.getElementById('user-hospital').textContent = currentUser.hospital || '';
+            }
+        } else if (result.status === 'pending') {
+            showLoader(false);
+            alert('⏳ 원장님 승인 대기 중입니다.\n승인 후 이용 가능합니다.');
+        } else {
+            if (silent) return;
+            showLoader(false);
+            // 미등록 → 신규 등록 모달 안내
+            openRegisterModal();
+        }
+    } catch(error) {
+        console.error('학생 확인 오류:', error);
+        if (!silent) showLoader(false);
     }
+}
 
     // ==================== 메인 화면 표시 ====================
         function showMainSection() {
@@ -1733,7 +1733,60 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
         localStorage.setItem('deviceUUID', uuid);
         return uuid;
     }
+    // ==================== 신규 등록 ====================
+function openRegisterModal() {
+    document.getElementById('register-modal').classList.add('open');
+    document.getElementById('register-step1').style.display = 'block';
+    document.getElementById('register-step2').style.display = 'none';
+}
+function closeRegisterModal() {
+    document.getElementById('register-modal').classList.remove('open');
+}
 
+async function sendRegisterOTP() {
+    const phone = document.getElementById('reg-phone').value.trim();
+    if (!/^01[0-9]{8,9}$/.test(phone)) { alert('휴대폰번호를 정확히 입력해주세요.'); return; }
+    try {
+        const res = await fetchWithRetry(CONFIG.GAS_URL, {
+            body: JSON.stringify({ action:'requestOTP', phone, kakaoId:'new', name:'신규' })
+        });
+        const r = await res.json();
+        if (r.status === 'success') alert('인증번호가 전송되었습니다.');
+        else alert('전송 실패. 다시 시도해주세요.');
+    } catch(e) { alert('서버 오류. 다시 시도해주세요.'); }
+}
+
+async function submitNewStudent() {
+    const name  = document.getElementById('reg-name').value.trim();
+    const phone = document.getElementById('reg-phone').value.trim();
+    const otp   = document.getElementById('reg-otp').value.trim();
+    if (!name)  { alert('이름을 입력해주세요.'); return; }
+    if (!/^01[0-9]{8,9}$/.test(phone)) { alert('휴대폰번호를 정확히 입력해주세요.'); return; }
+    if (!otp)   { alert('인증번호를 입력해주세요.'); return; }
+
+    showLoader(true);
+    try {
+        // OTP 검증
+        const otpRes = await fetchWithRetry(CONFIG.GAS_URL, {
+            body: JSON.stringify({ action:'verifyOTP', otp, phone })
+        });
+        const otpResult = await otpRes.json();
+        if (otpResult.status !== 'success') { showLoader(false); alert('인증번호가 올바르지 않습니다.'); return; }
+
+        // 신규 등록 (pending 상태로)
+        const regRes = await fetchWithRetry(CONFIG.GAS_URL, {
+            body: JSON.stringify({ action:'registerStudent', kakaoId:currentUser.kakaoId, name, phone, status:'pending' })
+        });
+        const regResult = await regRes.json();
+        showLoader(false);
+        if (regResult.status === 'success' || regResult.status === 'pending') {
+            document.getElementById('register-step1').style.display = 'none';
+            document.getElementById('register-step2').style.display = 'block';
+        } else {
+            alert('등록 실패. 학원으로 문의해주세요.');
+        }
+    } catch(e) { showLoader(false); alert('서버 오류. 다시 시도해주세요.'); }
+}
     // ==================== WebAuthn ====================
     async function registerWebAuthn(kakaoId, name) {
         if (!window.PublicKeyCredential) return false;
