@@ -915,8 +915,7 @@ let missingManagerPhone = '';
                 const savedUser = sessionStorage.getItem('currentUser');
                 if (savedUser) {
                     currentUser = JSON.parse(savedUser);
-                    showMainSection();
-                    checkTodayStatus();
+                    await verifyStudent();
                 }
             } else { expireSession(); }
         }
