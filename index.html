@@ -7,7 +7,7 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js"></script>
     <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs, orderBy, arrayUnion } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -35,6 +35,12 @@
   window.fsSetDoc = setDoc;
   window.fsUpdateDoc = updateDoc;
   window.fsOnSnapshot = onSnapshot;
+  window.fsCollection = collection;
+  window.fsQuery      = query;
+  window.fsWhere      = where;
+  window.fsGetDocs    = getDocs;
+  window.fsOrderBy    = orderBy;
+  window.fsArrayUnion = arrayUnion;
 
   // 익명 로그인
   try {
@@ -1020,7 +1026,7 @@ let missingManagerPhone = '';
             if (!silent) {
                 showLoader(false);
                 showMainSection();
-                Promise.all([checkTodayStatus(), loadStudentStats()]);
+                                Promise.all([checkTodayStatus(), loadStudentStats(), loadIntervals()]);
             } else {
                 document.getElementById('user-name').textContent     = currentUser.name     || '';
                 document.getElementById('user-hospital').textContent = currentUser.hospital || '';
@@ -1051,11 +1057,7 @@ let missingManagerPhone = '';
         setCharacter('egg');
         loadGridImages();
 
-        if (currentUser.intervals) {
-            const hasPending = currentUser.intervals.some(i => i.status === 'available');
-            if (hasPending) document.getElementById('sign-bubble').style.display = 'block';
-        }
-        renderIntervalList();
+        
 
                 // 버튼 초기 상태: 출근 활성 / 퇴근 비활성
         const inBtn  = document.getElementById('check-in-btn');
@@ -1436,12 +1438,26 @@ let missingManagerPhone = '';
     openBottomModal('sign-bottom-modal');
 }
 
-    function openLastInterval() {
-    if (!currentUser.intervals) return;
-    const avail = currentUser.intervals.find(i => i.status === 'available');
-    if (!avail) { alert('현재 서명 가능한 회차가 없습니다.'); return; }
-    openSignatureUI(avail.startDate, avail.endDate, avail.intervalStr);
-}
+        function openLastInterval() {
+        if (!currentUser.intervals) return;
+        const availIdx = currentUser.intervals.findIndex(i => i.status === 'available');
+        if (availIdx === -1) { alert('현재 서명 가능한 회차가 없습니다.'); return; }
+        startBsSign(availIdx);
+    }
+
+    window.insertTestData = async function() {
+        if (!window.db || !currentUser.kakaoId) { alert('로그인 후 콘솔에서 실행해주세요.'); return; }
+        try {
+            const stuRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
+            await window.fsUpdateDoc(stuRef, { practiceStart: '2026-04-27', practiceEnd: '2026-07-18' });
+            const testDates = ['2026-05-04','2026-05-05','2026-05-06','2026-05-07','2026-05-08'];
+            for (const dt of testDates) {
+                const ref = window.fsDoc(window.db, 'attendance', String(currentUser.kakaoId)+'_'+dt);
+                await window.fsSetDoc(ref, { kakaoId:currentUser.kakaoId, name:currentUser.name, date:dt, inTime:'09:00', outTime:'18:00', workMinutes:540 }, { merge:true });
+            }
+            alert('✅ 테스트 데이터 삽입 완료!\n새로고침하면 지난주(05/04~05/10) 서명하기 버튼이 나타납니다.');
+        } catch(e) { alert('삽입 실패: ' + e.message); }
+    };
 
     function goSignStep(step) {
     document.querySelectorAll('.sign-step').forEach(el => el.classList.remove('active'));
@@ -1669,24 +1685,31 @@ function computeIntervals(practiceStart, practiceEnd) {
     const intervals = [];
     const startD = new Date(practiceStart + 'T00:00:00');
     const endD   = new Date(practiceEnd   + 'T00:00:00');
-    let friday = new Date(startD);
-    const daysToFriday = (5 - friday.getDay() + 7) % 7;
-    friday.setDate(friday.getDate() + daysToFriday);
+    const dow = startD.getDay();
+    const firstMon = new Date(startD);
+    firstMon.setDate(firstMon.getDate() - (dow === 0 ? 6 : dow - 1));
     let weekNum = 1;
-    while (friday <= endD) {
-        const monday = new Date(friday); monday.setDate(friday.getDate() - 4);
-        const actualStart = monday < startD ? new Date(startD) : new Date(monday);
-        const startStr = fmt(actualStart);
-        const endStr   = fmt(friday);
+    const cur = new Date(firstMon);
+    while (cur <= endD) {
+        const weekMon = new Date(cur);
+        const weekSun = new Date(cur);
+        weekSun.setDate(weekSun.getDate() + 6);
+        const startStr = fmt(weekMon);
+        const endStr   = fmt(weekSun);
         intervals.push({ weekNum, startDate:startStr, endDate:endStr, intervalStr:`${startStr.slice(5)} ~ ${endStr.slice(5)}` });
         weekNum++;
-        friday.setDate(friday.getDate() + 7);
+        cur.setDate(cur.getDate() + 7);
     }
     return intervals;
 }
 
 async function loadIntervals() {
     try {
+        function fmt(d) {
+            return d.getFullYear() + '-' +
+                String(d.getMonth()+1).padStart(2,'0') + '-' +
+                String(d.getDate()).padStart(2,'0');
+        }
         const studentRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
         const studentSnap = await window.fsGetDoc(studentRef);
         if (!studentSnap.exists()) return;
@@ -1694,13 +1717,30 @@ async function loadIntervals() {
         const practiceStart = sd.practiceStart || '2026-02-02';
         const practiceEnd   = sd.practiceEnd   || '2026-07-18';
         const computed = computeIntervals(practiceStart, practiceEnd);
-        const today = new Date().toISOString().slice(0,10);
+        const today = fmt(new Date());
         const intervals = await Promise.all(computed.map(async inv => {
             try {
+                // 이 주 다음 월요일 = 일요일(endDate) + 1일
+                const nextMon = new Date(inv.endDate + 'T00:00:00');
+                nextMon.setDate(nextMon.getDate() + 1);
+                const nextMonStr = fmt(nextMon);
+                // 아직 다음 월요일 안됨 → 잠금
+                if (today < nextMonStr) return { ...inv, status:'locked' };
+                // 이미 서명 완료 확인
                 const sigRef = window.fsDoc(window.db, 'weeklySignatures', String(currentUser.kakaoId)+'_'+inv.startDate);
                 const sigSnap = await window.fsGetDoc(sigRef);
-                const status = sigSnap.exists() ? 'completed' : (inv.endDate <= today ? 'available' : 'locked');
-                return { ...inv, status };
+                if (sigSnap.exists()) return { ...inv, status:'completed' };
+                // 이번 주 출퇴근 기록 확인 (월~일 7일 개별 조회)
+                const dates = [];
+                let d = new Date(inv.startDate + 'T00:00:00');
+                const endD = new Date(inv.endDate + 'T00:00:00');
+                while (d <= endD) { dates.push(fmt(d)); d.setDate(d.getDate()+1); }
+                const snaps = await Promise.all(dates.map(date =>
+                    window.fsGetDoc(window.fsDoc(window.db, 'attendance', String(currentUser.kakaoId)+'_'+date))
+                ));
+                const hasRecords = snaps.some(s => s.exists());
+                if (!hasRecords) return { ...inv, status:'locked', noRecords:true };
+                return { ...inv, status:'available' };
             } catch(e) { return { ...inv, status:'locked' }; }
         }));
         currentUser.intervals = intervals;
