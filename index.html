@@ -7,7 +7,7 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js"></script>
     <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -1204,16 +1204,24 @@ let missingManagerPhone = '';
         );
         const snap = await window.fsGetDocs(q);
 
-        let totalMinutes = 0, tardyCount = 0, earlyCount = 0;
+                let totalMinutes = 0, tardyCount = 0, earlyCount = 0;
         snap.forEach(d => {
             const rec = d.data();
             if (!rec.inTime || !rec.outTime) return;
             const [inH, inM]   = rec.inTime.split(':').map(Number);
             const [outH, outM] = rec.outTime.split(':').map(Number);
-            const mins = (outH * 60 + outM) - (inH * 60 + inM);
-            if (mins > 0) totalMinutes += mins;
-            if (inH * 60 + inM > 9 * 60) tardyCount++;
-            if (outH * 60 + outM < 18 * 60) earlyCount++;
+            const rawMins = (outH * 60 + outM) - (inH * 60 + inM);
+            if (rawMins <= 0) return;
+            // 4시간 초과 시 30분 휴게 차감
+            const workMins = rawMins > 240 ? rawMins - 30 : rawMins;
+            totalMinutes += workMins;
+            // 주말 제외하고 지각/조퇴 판단
+            const dow = rec.date ? new Date(rec.date + 'T00:00:00').getDay() : -1;
+            const isWeekend = dow === 0 || dow === 6;
+            if (!isWeekend) {
+                if (inH * 60 + inM > 540)  tardyCount++; // 09:01 이상
+                if (outH * 60 + outM < 989) earlyCount++; // 16:29 미만
+            }
         });
         const totalHours = Math.round(totalMinutes / 60 * 10) / 10;
 
@@ -1230,7 +1238,7 @@ let missingManagerPhone = '';
             const end = new Date(to   + 'T00:00:00');
             while (cur <= end) {
                 const dow = cur.getDay();
-                const ds  = cur.toISOString().slice(0, 10);
+                                const ds  = cur.getFullYear() + '-' + String(cur.getMonth()+1).padStart(2,'0') + '-' + String(cur.getDate()).padStart(2,'0');
                 if (dow !== 0 && dow !== 6 && !HOLIDAYS.has(ds)) count++;
                 cur.setDate(cur.getDate() + 1);
             }
@@ -1310,7 +1318,7 @@ let missingManagerPhone = '';
                         await window.fsSetDoc(attRef, { ...existing, kakaoId: currentUser.kakaoId, name: currentUser.name, hospital: currentUser.hospital, date: todayStr, inTime: timeStr, inAccuracy: Math.round(pos.coords.accuracy), inDistance: Math.round(dist) }, { merge: true });
                         result = { status: 'success' };
                     }
-                } else {
+                                                } else {
                     if (existing.outTime) { result = { status: 'duplicate' }; }
                     else {
                         await window.fsSetDoc(attRef, { ...existing, outTime: timeStr, outAccuracy: Math.round(pos.coords.accuracy), outDistance: Math.round(dist) }, { merge: true });
