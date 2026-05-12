@@ -1295,10 +1295,11 @@ let missingManagerPhone = '';
             const pos = await getCurrentPosition();
             const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, currentUser.hospitalLat, currentUser.hospitalLon);
 
-            if (dist > CONFIG.MAX_DISTANCE) {
+                        const allowedDist = Math.max(CONFIG.MAX_DISTANCE, Math.min(pos.coords.accuracy * 1.5, 150));
+            if (dist > allowedDist) {
                 overlay.style.display = 'none';
                 if (type === '출근') inBtn.disabled = false; else outBtn.disabled = false;
-                alert(`📍 병원에서 ${Math.round(dist)}m 떨어져 있습니다.\n(허용: ${CONFIG.MAX_DISTANCE}m 이내)`);
+                alert(`📍 병원에서 ${Math.round(dist)}m 떨어져 있습니다.\n(허용: ${Math.round(allowedDist)}m 이내)`);
                 return;
             }
 
@@ -2050,9 +2051,9 @@ async function submitNewStudent() {
                         { type: 'public-key', alg: -7 },
                         { type: 'public-key', alg: -257 }
                     ],
-                    authenticatorSelection: {
+                                        authenticatorSelection: {
                         authenticatorAttachment: 'platform',
-                        userVerification: 'required'
+                        userVerification: 'preferred'
                     },
                     timeout: 60000
                 }
@@ -2082,7 +2083,7 @@ async function submitNewStudent() {
                 challenge,
                 rpId: location.hostname,
                 allowCredentials: [],
-                userVerification: 'required',
+                                userVerification: 'preferred',
                 timeout: 60000
             }
         });
