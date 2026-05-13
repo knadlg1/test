@@ -972,15 +972,14 @@ let missingManagerPhone = '';
                                 if (result.kakaoId) {
                     currentUser.kakaoId = result.kakaoId;
                     localStorage.setItem('realKakaoId', result.kakaoId);
-                    initializeSession();
+                                        initializeSession();
+                    const cached = localStorage.getItem('cachedUserData');
                     if (cached) {
-    const data = JSON.parse(cached);
-    delete data.role;  // role은 항상 Firestore에서 새로 읽기
-    Object.assign(currentUser, data);
-    await verifyStudent();
-} else {
-                        await verifyStudent();
+                        const data = JSON.parse(cached);
+                        delete data.role;
+                        Object.assign(currentUser, data);
                     }
+                    await verifyStudent();
                 } else {
                     showLoader(false);
                     const savedId = localStorage.getItem('realKakaoId');
@@ -997,12 +996,15 @@ let missingManagerPhone = '';
             initializeSession();
             checkMidnightReset();
             preventBackButton();
-            const savedId = localStorage.getItem('realKakaoId');
+                        const savedId = localStorage.getItem('realKakaoId');
             if (savedId) {
                 currentUser.kakaoId = savedId;
                 const savedUser = sessionStorage.getItem('currentUser');
-                if (savedUser) { currentUser = JSON.parse(savedUser); await verifyStudent(); }
-                else { await verifyStudent(); }
+                if (savedUser) {
+                    currentUser = JSON.parse(savedUser);
+                    currentUser.kakaoId = savedId;  // realKakaoId 항상 유지
+                }
+                await verifyStudent();
             }
         }
     }
