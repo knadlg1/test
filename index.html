@@ -2255,7 +2255,7 @@ async function submitNewStudent() {
                     ],
                                         authenticatorSelection: {
                         authenticatorAttachment: 'platform',
-                        userVerification: 'preferred'
+                        userVerification: 'required'
                     },
                     timeout: 60000
                 }
@@ -2285,7 +2285,7 @@ async function submitNewStudent() {
                 challenge,
                 rpId: location.hostname,
                 allowCredentials: [],
-                                userVerification: 'preferred',
+                                userVerification: 'required',
                 timeout: 60000
             }
         });
