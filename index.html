@@ -811,7 +811,87 @@
 </div>
 
 <!-- 원장님 섹션 -->
-<div id="admin-section"></div>
+<div id="admin-section">
+<div style="max-width:480px;margin:0 auto;padding-bottom:40px;">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #333;">
+    <div style="font-size:18px;font-weight:700;">⚙️ 관리자 메뉴</div>
+    <button onclick="adminLogout()" style="background:#374151;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;">로그아웃</button>
+  </div>
+
+  <div style="display:flex;gap:4px;margin-bottom:20px;background:#111;border-radius:10px;padding:4px;">
+    <button id="tab-btn-student" onclick="switchAdminTab('student')" style="flex:1;padding:10px 0;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#2563eb;color:#fff;">👤 학생관리</button>
+    <button id="tab-btn-class"   onclick="switchAdminTab('class')"   style="flex:1;padding:10px 0;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#94a3b8;">📚 반관리</button>
+    <button id="tab-btn-hospital" onclick="switchAdminTab('hospital')" style="flex:1;padding:10px 0;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#94a3b8;">🏥 병원관리</button>
+  </div>
+
+  <!-- 탭1: 학생관리 -->
+  <div id="admin-tab-student">
+    <div style="background:#1a1a2e;border-radius:12px;padding:20px;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#60a5fa;">🏥 실습병원 변경</div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">반 필터</label>
+        <select id="admin-class-filter" onchange="adminFilterStudents()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
+          <option value="">전체 학생</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">학생 선택</label>
+        <select id="admin-student-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
+          <option value="">학생을 선택해주세요</option>
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">변경할 병원</label>
+        <select id="admin-hospital-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
+          <option value="">병원을 선택해주세요</option>
+        </select>
+      </div>
+      <button onclick="adminChangeHospital()" style="width:100%;padding:14px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">✅ 병원 변경</button>
+    </div>
+  </div>
+
+  <!-- 탭2: 반관리 -->
+  <div id="admin-tab-class" style="display:none;">
+    <div style="background:#1a1a2e;border-radius:12px;padding:20px;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#60a5fa;">➕ 반 추가</div>
+      <div style="display:flex;gap:8px;">
+        <input id="new-class-name" type="text" placeholder="반 이름 (예: 1반)" style="flex:1;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;font-size:14px;">
+        <button onclick="adminCreateClass()" style="padding:10px 18px;background:#10b981;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;">추가</button>
+      </div>
+    </div>
+    <div style="background:#1a1a2e;border-radius:12px;padding:20px;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#60a5fa;">👤 학생 → 반 배정</div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">학생 선택</label>
+        <select id="assign-student-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
+          <option value="">학생을 선택해주세요</option>
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">배정할 반</label>
+        <select id="assign-class-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
+          <option value="">반을 선택해주세요</option>
+        </select>
+      </div>
+      <button onclick="adminAssignStudentToClass()" style="width:100%;padding:14px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">✅ 배정하기</button>
+    </div>
+    <div style="background:#1a1a2e;border-radius:12px;padding:20px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:12px;color:#60a5fa;">📋 반 목록</div>
+      <div id="admin-class-list"><div style="color:#94a3b8;font-size:13px;text-align:center;padding:20px;">불러오는 중...</div></div>
+    </div>
+  </div>
+
+  <!-- 탭3: 병원관리 -->
+  <div id="admin-tab-hospital" style="display:none;">
+    <div style="background:#1a1a2e;border-radius:12px;padding:20px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#60a5fa;">🏥 등록 병원 목록</div>
+      <div id="admin-hospital-list"></div>
+    </div>
+  </div>
+
+</div>
+</div>
 <!-- 담당자 OTP 인증 모달 (서명섹션용) -->
 <div class="sig-modal-overlay" id="sig-otp-modal" style="z-index:5000;">
     <div class="sig-modal-card">
@@ -853,13 +933,14 @@ let missingManagerPhone = '';
     let sigOtpCallback = null;
     let currentRecordData = [];
 
-    const CONFIG = {
+        const CONFIG = {
         KAKAO_KEY: '256604f2f245388033b0226667539d5f',
         GAS_URL: 'https://script.google.com/macros/s/AKfycbyoAnovdhUkm5Q6UZJs69-U-hR3QndY5pPK-lbXlj5wQTRn_b3coewDpAPbH8CoNuWsTw/exec',
         SESSION_DURATION: 120 * 60 * 1000,
         MAX_DISTANCE: 30,
         GPS_TIMEOUT: 20000,
-        GPS_MAX_AGE: 0
+        GPS_MAX_AGE: 0,
+        ACADEMY_ID: 'saha'
     };
 
         let currentUser = { kakaoId:null, name:null, hospital:null, hospitalLat:null, hospitalLon:null };
@@ -1015,23 +1096,28 @@ let missingManagerPhone = '';
                 }
             }
 
-            currentUser.name        = result.name;
-            currentUser.phone       = result.phone;
-            currentUser.hospital    = result.hospital;
-            currentUser.hospitalLat = result.hospitalLat;
-            currentUser.hospitalLon = result.hospitalLon;
-            currentUser.intervals   = result.intervals;
-            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-            localStorage.setItem('cachedUserData', JSON.stringify(currentUser));
+                currentUser.name        = result.name;
+    currentUser.phone       = result.phone;
+    currentUser.hospital    = result.hospital;
+    currentUser.hospitalLat = result.hospitalLat;
+    currentUser.hospitalLon = result.hospitalLon;
+    currentUser.intervals   = result.intervals;
+    currentUser.role        = result.role || 'student';
+    sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+    localStorage.setItem('cachedUserData', JSON.stringify(currentUser));
 
-            if (!silent) {
-                showLoader(false);
-                showMainSection();
-                                Promise.all([checkTodayStatus(), loadStudentStats(), loadIntervals()]);
-            } else {
-                document.getElementById('user-name').textContent     = currentUser.name     || '';
-                document.getElementById('user-hospital').textContent = currentUser.hospital || '';
-            }
+    if (!silent) {
+        showLoader(false);
+        if (currentUser.role === 'admin') {
+            showAdminSection();
+        } else {
+            showMainSection();
+            Promise.all([checkTodayStatus(), loadStudentStats(), loadIntervals()]);
+        }
+    } else {
+        document.getElementById('user-name').textContent     = currentUser.name     || '';
+        document.getElementById('user-hospital').textContent = currentUser.hospital || '';
+    }
         } else if (result.status === 'pending') {
             showLoader(false);
             alert('⏳ 원장님 승인 대기 중입니다.\n승인 후 이용 가능합니다.');
@@ -2647,8 +2733,224 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
         } catch(e) { alert('서버 오류.'); }
         finally { btn.disabled=false; }
     }
-    function closeHospitalEditModal() { document.getElementById('hospital-edit-modal').style.display='none'; }
-    
+        function closeHospitalEditModal() { document.getElementById('hospital-edit-modal').style.display='none'; }
+
+    // ==================== 관리자 기능 ====================
+    const HOSPITALS = [
+        { name: '사송(test)',      lat: 35.319494, lon: 129.070902 },
+        { name: '사하제일간호학원', lat: 35.104694, lon: 128.971022 },
+        { name: '더존한방',        lat: 35.105956, lon: 128.966085 },
+        { name: '부영',            lat: 35.141094, lon: 128.984060 },
+        { name: '장림한서',        lat: 35.074158, lon: 128.976929 },
+        { name: '굳건',            lat: 35.105134, lon: 128.969996 },
+        { name: '한빛요양',        lat: 35.087057, lon: 128.993433 },
+        { name: '명지오션척',      lat: 35.081195, lon: 128.903346 },
+        { name: '부산맘',          lat: 35.105063, lon: 128.969028 },
+        { name: '좋은사랑',        lat: 35.099561, lon: 128.983513 },
+        { name: '소나무',          lat: 35.105399, lon: 129.009726 },
+        { name: '신창요양',        lat: 35.102581, lon: 129.036129 },
+        { name: '자생한방',        lat: 35.106636, lon: 128.967709 },
+        { name: '곽요양',          lat: 35.106506, lon: 128.960991 },
+        { name: '더탄탄',          lat: 35.098480, lon: 128.993575 },
+        { name: '갑을녹산',        lat: 35.090565, lon: 128.853299 },
+        { name: '강동병원',        lat: 35.089700, lon: 128.977952 },
+        { name: '조이효요양',      lat: 35.090557, lon: 128.998752 },
+    ];
+
+    let adminStudentsList = [];
+    let adminClassesList  = [];
+
+    async function showAdminSection() {
+        document.getElementById('login-section').style.display  = 'none';
+        document.getElementById('main-section').style.display   = 'none';
+        document.getElementById('admin-section').style.display  = 'block';
+
+        // 병원 드롭다운 채우기
+        const hSel = document.getElementById('admin-hospital-select');
+        hSel.innerHTML = '<option value="">병원을 선택해주세요</option>';
+        HOSPITALS.forEach(h => {
+            const o = document.createElement('option');
+            o.value = h.name; o.dataset.lat = h.lat; o.dataset.lon = h.lon; o.textContent = h.name;
+            hSel.appendChild(o);
+        });
+
+        // 병원 목록 탭
+        document.getElementById('admin-hospital-list').innerHTML = HOSPITALS.map((h, i) =>
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1e293b;">
+                <div>
+                    <div style="font-size:14px;font-weight:600;color:#e2e8f0;">${h.name}</div>
+                    <div style="font-size:11px;color:#64748b;">${h.lat}, ${h.lon}</div>
+                </div>
+                <div style="font-size:12px;color:#60a5fa;">#${i+1}</div>
+            </div>`
+        ).join('');
+
+        await adminLoadData();
+    }
+
+    async function adminLoadData() {
+        showLoader(true);
+        try {
+            // 학생 목록
+            const stuSnap = await window.fsGetDocs(window.fsCollection(window.db, 'students'));
+            adminStudentsList = [];
+            stuSnap.forEach(doc => {
+                const d = doc.data();
+                if (d.status !== 'pending' && d.role !== 'admin') {
+                    adminStudentsList.push({ kakaoId: doc.id, name: d.name || doc.id, classId: d.classId || '', hospital: d.hospital || '' });
+                }
+            });
+            adminStudentsList.sort((a, b) => (a.name||'').localeCompare(b.name||'', 'ko'));
+
+            // 반 목록
+            const clSnap = await window.fsGetDocs(window.fsCollection(window.db, 'classes'));
+            adminClassesList = [];
+            clSnap.forEach(doc => {
+                const d = doc.data();
+                adminClassesList.push({ id: doc.id, name: d.name || doc.id, students: d.students || [], academyId: d.academyId || '' });
+            });
+            adminClassesList.sort((a, b) => (a.name||'').localeCompare(b.name||'', 'ko'));
+
+            adminRenderClassFilter();
+            adminFilterStudents();
+            adminRenderClassList();
+            adminPopulateAssignSelects();
+        } catch(e) {
+            alert('데이터 로드 실패: ' + e.message);
+        }
+        showLoader(false);
+    }
+
+    function adminRenderClassFilter() {
+        const sel = document.getElementById('admin-class-filter');
+        sel.innerHTML = '<option value="">전체 학생</option>';
+        adminClassesList.forEach(c => {
+            const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; sel.appendChild(o);
+        });
+    }
+
+    function adminFilterStudents() {
+        const classId = document.getElementById('admin-class-filter').value;
+        const sel = document.getElementById('admin-student-select');
+        sel.innerHTML = '<option value="">학생을 선택해주세요</option>';
+        const list = classId ? adminStudentsList.filter(s => s.classId === classId) : adminStudentsList;
+        list.forEach(s => {
+            const o = document.createElement('option');
+            o.value = s.kakaoId;
+            o.textContent = s.name + (s.hospital ? ` (${s.hospital})` : '');
+            sel.appendChild(o);
+        });
+    }
+
+    function adminRenderClassList() {
+        const el = document.getElementById('admin-class-list');
+        if (!adminClassesList.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:13px;text-align:center;padding:20px;">등록된 반이 없습니다.</div>'; return; }
+        el.innerHTML = adminClassesList.map(c => {
+            const members = adminStudentsList.filter(s => s.classId === c.id);
+            return `<div style="border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:10px;">
+                <div style="font-weight:700;font-size:14px;color:#60a5fa;margin-bottom:6px;">${c.name} (${members.length}명)</div>
+                <div style="font-size:12px;color:#94a3b8;">${members.length ? members.map(s=>s.name).join(', ') : '(배정된 학생 없음)'}</div>
+            </div>`;
+        }).join('');
+    }
+
+    function adminPopulateAssignSelects() {
+        const stuSel = document.getElementById('assign-student-select');
+        stuSel.innerHTML = '<option value="">학생을 선택해주세요</option>';
+        adminStudentsList.forEach(s => {
+            const o = document.createElement('option'); o.value = s.kakaoId;
+            const cn = s.classId ? (adminClassesList.find(c => c.id === s.classId)||{}).name : null;
+            o.textContent = s.name + (cn ? ` [${cn}]` : '');
+            stuSel.appendChild(o);
+        });
+        const clSel = document.getElementById('assign-class-select');
+        clSel.innerHTML = '<option value="">반을 선택해주세요</option>';
+        adminClassesList.forEach(c => {
+            const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; clSel.appendChild(o);
+        });
+    }
+
+    async function adminChangeHospital() {
+        const studentId = document.getElementById('admin-student-select').value;
+        const hospitalSel = document.getElementById('admin-hospital-select');
+        const opt = hospitalSel.options[hospitalSel.selectedIndex];
+        if (!studentId || !hospitalSel.value) { alert('학생과 병원을 선택해주세요.'); return; }
+        const stuName = document.getElementById('admin-student-select').options[document.getElementById('admin-student-select').selectedIndex].text.split(' (')[0];
+        if (!confirm(`${stuName} → ${opt.text} 으로 변경하시겠습니까?`)) return;
+        showLoader(true);
+        try {
+            await window.fsUpdateDoc(window.fsDoc(window.db, 'students', String(studentId)), {
+                hospital: opt.text, hospitalLat: parseFloat(opt.dataset.lat), hospitalLon: parseFloat(opt.dataset.lon)
+            });
+            alert('✅ 병원 변경 완료!');
+            await adminLoadData();
+        } catch(e) { alert('변경 실패: ' + e.message); }
+        showLoader(false);
+    }
+
+    async function adminCreateClass() {
+        const name = document.getElementById('new-class-name').value.trim();
+        if (!name) { alert('반 이름을 입력해주세요.'); return; }
+        if (adminClassesList.find(c => c.name === name)) { alert('이미 존재하는 반 이름입니다.'); return; }
+        showLoader(true);
+        try {
+            const classId = 'class_' + Date.now();
+            await window.fsSetDoc(window.fsDoc(window.db, 'classes', classId), {
+                name, academyId: CONFIG.ACADEMY_ID, students: [], createdAt: Date.now()
+            });
+            document.getElementById('new-class-name').value = '';
+            alert('✅ 반 추가 완료!');
+            await adminLoadData();
+        } catch(e) { alert('추가 실패: ' + e.message); }
+        showLoader(false);
+    }
+
+    async function adminAssignStudentToClass() {
+        const studentId = document.getElementById('assign-student-select').value;
+        const classId   = document.getElementById('assign-class-select').value;
+        if (!studentId || !classId) { alert('학생과 반을 선택해주세요.'); return; }
+        const st = adminStudentsList.find(s => s.kakaoId === studentId);
+        const cl = adminClassesList.find(c => c.id === classId);
+        if (!confirm(`${st?.name} → ${cl?.name} 배정하시겠습니까?`)) return;
+        showLoader(true);
+        try {
+            // 기존 반에서 제거 (arrayRemove 없이 수동 처리)
+            if (st?.classId && st.classId !== classId) {
+                const oldSnap = await window.fsGetDoc(window.fsDoc(window.db, 'classes', st.classId));
+                if (oldSnap.exists()) {
+                    const oldStudents = (oldSnap.data().students || []).filter(id => id !== String(studentId));
+                    await window.fsUpdateDoc(window.fsDoc(window.db, 'classes', st.classId), { students: oldStudents });
+                }
+            }
+            // 새 반에 추가
+            await window.fsUpdateDoc(window.fsDoc(window.db, 'classes', classId), {
+                students: window.fsArrayUnion(String(studentId))
+            });
+            // 학생 문서 업데이트
+            await window.fsUpdateDoc(window.fsDoc(window.db, 'students', String(studentId)), { classId });
+            alert('✅ 배정 완료!');
+            await adminLoadData();
+        } catch(e) { alert('배정 실패: ' + e.message); }
+        showLoader(false);
+    }
+
+    function switchAdminTab(tab) {
+        ['student','class','hospital'].forEach(t => {
+            document.getElementById('admin-tab-' + t).style.display = t === tab ? 'block' : 'none';
+            const btn = document.getElementById('tab-btn-' + t);
+            btn.style.background = t === tab ? '#2563eb' : 'transparent';
+            btn.style.color      = t === tab ? '#fff'    : '#94a3b8';
+        });
+    }
+
+    function adminLogout() {
+        localStorage.removeItem('realKakaoId');
+        localStorage.removeItem('cachedUserData');
+        sessionStorage.removeItem('currentUser');
+        document.getElementById('admin-section').style.display  = 'none';
+        document.getElementById('login-section').style.display  = 'flex';
+        currentUser = { kakaoId:null, name:null, hospital:null, hospitalLat:null, hospitalLon:null };
+    }
 </script>
 </body>
 </html>
