@@ -1055,19 +1055,23 @@ let missingManagerPhone = '';
             if (!silent) showLoader(true);
 
         let result = null;
+alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kakaoId);  // 디버그1
 
         // Firestore에서 먼저 조회
         try {
             const docRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
             const docSnap = await window.fsGetDoc(docRef);
             if (docSnap.exists()) {
-                const s = docSnap.data();
-                if (s.status === 'pending') {
-                    result = { status: 'pending', name: s.name };
-                                } else {
-                    result = { ...s, status: 'found' };
-                }
-            }
+    const s = docSnap.data();
+    alert('Firestore 데이터: status=' + s.status + ', role=' + s.role);  // 디버그2
+    if (s.status === 'pending') {
+        result = { status: 'pending', name: s.name };
+                } else {
+        result = { ...s, status: 'found' };
+    }
+} else {
+    alert('Firestore 문서 없음! kakaoId=' + currentUser.kakaoId);  // 디버그3
+}
         } catch(fsErr) {
             console.warn('Firestore 조회 실패, GAS로 폴백:', fsErr);
         }
