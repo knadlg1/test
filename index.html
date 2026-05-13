@@ -892,6 +892,27 @@
 
 </div>
 </div>
+
+    <!-- PIN/비밀번호 인증 모달 -->
+<div class="sig-modal-overlay" id="pin-modal" style="z-index:10000;">
+    <div class="sig-modal-card">
+        <div class="sig-modal-title" id="pin-modal-title">🔐 비밀번호 입력</div>
+        <p id="pin-modal-desc" style="font-size:13px;color:#64748b;text-align:center;margin-bottom:16px;"></p>
+        <input type="password" id="pin-input" placeholder="숫자 4~6자리"
+            style="width:100%;padding:14px;font-size:22px;text-align:center;border:2px solid #e2e8f0;border-radius:12px;outline:none;box-sizing:border-box;letter-spacing:6px;margin-bottom:8px;"
+            maxlength="6" inputmode="numeric">
+        <input type="password" id="pin-confirm-input" placeholder="비밀번호 재입력"
+            style="width:100%;padding:14px;font-size:22px;text-align:center;border:2px solid #e2e8f0;border-radius:12px;outline:none;box-sizing:border-box;letter-spacing:6px;display:none;margin-bottom:8px;"
+            maxlength="6" inputmode="numeric">
+        <p id="pin-error-msg" style="color:#ef4444;font-size:12px;text-align:center;min-height:18px;margin-bottom:8px;"></p>
+        <button onclick="confirmPin()"
+            style="width:100%;padding:14px;background:#6c63ff;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;">확인</button>
+        <button id="pin-biometric-btn" onclick="retryBiometric()"
+            style="width:100%;padding:12px;background:#f0f7ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:none;">
+            🔒 생체인증으로 재시도
+        </button>
+    </div>
+</div>
 <!-- 담당자 OTP 인증 모달 (서명섹션용) -->
 <div class="sig-modal-overlay" id="sig-otp-modal" style="z-index:5000;">
     <div class="sig-modal-card">
@@ -2126,6 +2147,92 @@ async function submitNewStudent() {
         }
     } catch(e) { showLoader(false); alert('서버 오류. 다시 시도해주세요.'); }
 }
+
+            // ==================== PIN 비밀번호 인증 ====================
+    let _pinResolve = null;
+    let _pinKakaoId = null;
+    let _pinMode = 'verify';
+
+    async function _hashPin(pin) {
+        const data = new TextEncoder().encode(pin + '_saha_salt');
+        const buf = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+
+    async function verifyOrSetPin(kakaoId) {
+        _pinKakaoId = kakaoId;
+        if (!window.db) return true;
+        try {
+            const snap = await window.fsGetDoc(window.fsDoc(window.db, 'students', String(kakaoId)));
+            const hasPIN = snap.exists() && snap.data().pinHash;
+            return await _showPinModal(hasPIN ? 'verify' : 'set');
+        } catch(e) {
+            return await _showPinModal('verify');
+        }
+    }
+
+    function _showPinModal(mode) {
+        _pinMode = mode;
+        document.getElementById('pin-input').value = '';
+        document.getElementById('pin-confirm-input').value = '';
+        document.getElementById('pin-error-msg').textContent = '';
+        if (mode === 'set') {
+            document.getElementById('pin-modal-title').textContent = '🔐 비밀번호 설정';
+            document.getElementById('pin-modal-desc').textContent  = '처음 사용 시 비밀번호를 설정해주세요 (숫자 4~6자리)';
+            document.getElementById('pin-confirm-input').style.display = 'block';
+            document.getElementById('pin-biometric-btn').style.display = 'none';
+        } else {
+            document.getElementById('pin-modal-title').textContent = '🔐 비밀번호 입력';
+            document.getElementById('pin-modal-desc').textContent  = '등록된 비밀번호를 입력해주세요';
+            document.getElementById('pin-confirm-input').style.display = 'none';
+            document.getElementById('pin-biometric-btn').style.display = window.PublicKeyCredential ? 'block' : 'none';
+        }
+        document.getElementById('pin-modal').style.display = 'flex';
+        setTimeout(() => document.getElementById('pin-input').focus(), 200);
+        return new Promise(resolve => { _pinResolve = resolve; });
+    }
+
+    async function confirmPin() {
+        const pin = document.getElementById('pin-input').value;
+        const errEl = document.getElementById('pin-error-msg');
+        if (!pin || pin.length < 4) { errEl.textContent = '4자리 이상 입력해주세요.'; return; }
+        if (_pinMode === 'set') {
+            const confirm2 = document.getElementById('pin-confirm-input').value;
+            if (pin !== confirm2) { errEl.textContent = '비밀번호가 일치하지 않습니다.'; return; }
+            showLoader(true);
+            try {
+                const hash = await _hashPin(pin);
+                await window.fsUpdateDoc(window.fsDoc(window.db, 'students', String(_pinKakaoId)), { pinHash: hash });
+                showLoader(false);
+                document.getElementById('pin-modal').style.display = 'none';
+                if (_pinResolve) { _pinResolve(true); _pinResolve = null; }
+            } catch(e) { showLoader(false); errEl.textContent = '저장 실패. 다시 시도해주세요.'; }
+        } else {
+            showLoader(true);
+            try {
+                const hash = await _hashPin(pin);
+                const snap = await window.fsGetDoc(window.fsDoc(window.db, 'students', String(_pinKakaoId)));
+                showLoader(false);
+                if (snap.exists() && snap.data().pinHash === hash) {
+                    document.getElementById('pin-modal').style.display = 'none';
+                    if (_pinResolve) { _pinResolve(true); _pinResolve = null; }
+                } else {
+                    errEl.textContent = '비밀번호가 틀렸습니다.';
+                    document.getElementById('pin-input').value = '';
+                }
+            } catch(e) { showLoader(false); errEl.textContent = '오류 발생. 다시 시도해주세요.'; }
+        }
+    }
+
+    async function retryBiometric() {
+        document.getElementById('pin-modal').style.display = 'none';
+        const ok = await verifyWebAuthn(_pinKakaoId);
+        if (ok) {
+            if (_pinResolve) { _pinResolve(true); _pinResolve = null; }
+        } else {
+            setTimeout(() => { document.getElementById('pin-modal').style.display = 'flex'; }, 200);
+        }
+    }
     // ==================== WebAuthn ====================
     async function registerWebAuthn(kakaoId, name) {
         if (!window.PublicKeyCredential) return false;
@@ -2194,16 +2301,18 @@ async function submitNewStudent() {
     }
 }
 
-    async function ensureWebAuthn(kakaoId, name) {
-    if (!window.PublicKeyCredential) return true;
+        async function ensureWebAuthn(kakaoId, name) {
+    if (!window.PublicKeyCredential) {
+        return await verifyOrSetPin(kakaoId);
+    }
     const credId = localStorage.getItem('webAuthnCredId');
     if (!credId) {
-        return await registerWebAuthn(kakaoId, name);
+        const registered = await registerWebAuthn(kakaoId, name);
+        if (!registered) return await verifyOrSetPin(kakaoId);
+        return registered;
     }
     const ok = await verifyWebAuthn(kakaoId);
-    if (!ok) {
-        return await registerWebAuthn(kakaoId, name);
-    }
+    if (!ok) return await verifyOrSetPin(kakaoId);
     return true;
 }
 
