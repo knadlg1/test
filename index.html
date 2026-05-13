@@ -1110,7 +1110,8 @@ let missingManagerPhone = '';
     if (!silent) {
         showLoader(false);
         if (currentUser.role === 'admin') {
-            showAdminSection();
+    alert('admin 진입: ' + currentUser.role);  // 임시 디버그
+    showAdminSection();
         } else {
             showMainSection();
             Promise.all([checkTodayStatus(), loadStudentStats(), loadIntervals()]);
