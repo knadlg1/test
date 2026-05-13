@@ -973,11 +973,12 @@ let missingManagerPhone = '';
                     currentUser.kakaoId = result.kakaoId;
                     localStorage.setItem('realKakaoId', result.kakaoId);
                     initializeSession();
-                    const cached = localStorage.getItem('cachedUserData');
                     if (cached) {
-                        Object.assign(currentUser, JSON.parse(cached));
-                        await verifyStudent();
-                    } else {
+    const data = JSON.parse(cached);
+    delete data.role;  // role은 항상 Firestore에서 새로 읽기
+    Object.assign(currentUser, data);
+    await verifyStudent();
+} else {
                         await verifyStudent();
                     }
                 } else {
