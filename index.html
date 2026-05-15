@@ -35,11 +35,7 @@
   window.fsSetDoc = setDoc;
   window.fsUpdateDoc = updateDoc;
   window.fsOnSnapshot = onSnapshot;
-  window.fsCollection = collection;
-  window.fsQuery      = query;
-  window.fsWhere      = where;
-  window.fsGetDocs    = getDocs;
-  window.fsOrderBy    = orderBy;
+
   window.fsArrayUnion = arrayUnion;
   window.fsIncrement = increment;
 
@@ -127,6 +123,14 @@
         .circle { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; }
         .stat-label { font-size:9px; color:#666; }
 
+        /* 실습기간 타임라인 */
+        .practice-timeline { margin-top:10px; padding-top:10px; border-top:1px solid #f0f0f0; }
+        .tl-dates { display:flex; justify-content:space-between; font-size:10px; color:#aaa; margin-bottom:6px; font-weight:600; }
+        .tl-track { position:relative; height:4px; background:#eeeef5; border-radius:2px; margin:0 2px; }
+        .tl-fill  { height:4px; background:linear-gradient(90deg,#a78bfa,#6c63ff); border-radius:2px; transition:width 0.9s ease; }
+        .tl-dot   { position:absolute; top:50%; width:11px; height:11px; background:#6c63ff; border:2.5px solid #fff; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 0 2px rgba(108,99,255,0.35); transition:left 0.9s ease; }
+        .tl-dday  { text-align:center; font-size:10px; color:#6c63ff; font-weight:700; margin-top:6px; letter-spacing:-0.01em; }
+
         /* 진행률 */
         .progress-card { background:#fff; margin:8px 12px 0; border-radius:14px; padding:11px 14px; border:1px solid #eee; }
         .prog-header { display:flex; justify-content:space-between; margin-bottom:7px; }
@@ -139,6 +143,11 @@
         /* 광고배너 */
         .ad-banner { margin:8px 12px 0; border-radius:14px; overflow:hidden; border:1px solid #eee; display:none; }
         .ad-banner img { width:100%; display:block; }
+
+        /* 결제 경고 배너 */
+        .payment-warning-banner { display:none; margin:8px 12px 0; border-radius:14px; background:#fff7ed; border:1.5px solid #fed7aa; padding:12px 16px; }
+        .payment-warning-banner strong { display:block; font-size:13px; font-weight:700; color:#c2410c; margin-bottom:3px; }
+        .payment-warning-banner span { font-size:12px; color:#92400e; }
 
         /* 누락배너 */
 .missing-banner-item { margin:8px 12px 0; border-radius:14px; cursor:pointer; background:#fff1f2; border:1.5px solid #fca5a5; padding:12px 16px; text-align:center; font-size:13px; font-weight:700; color:#ef4444; }
@@ -285,10 +294,18 @@
         input[type="date"],input[type="file"],input[type="text"],input[type="number"],input[type="tel"] { width:100%; box-sizing:border-box; -webkit-appearance:none; }
 
         #admin-section { display:none; position:fixed; top:0; left:0; right:0; bottom:0; width:100vw; height:100vh; background:#000; color:#fff; z-index:999999; padding:50px 20px 20px; box-sizing:border-box; overflow-y:auto; }
+        #toast-container { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:9999999; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; }
+        .toast { padding:12px 20px; border-radius:12px; font-size:14px; font-weight:500; color:#fff; max-width:320px; text-align:center; opacity:0; transform:translateY(16px); transition:opacity .25s, transform .25s; pointer-events:none; word-break:keep-all; line-height:1.5; }
+        .toast.show { opacity:1; transform:translateY(0); }
+        .toast.t-success { background:#10b981; }
+        .toast.t-error   { background:#ef4444; }
+        .toast.t-warning { background:#f59e0b; }
+        .toast.t-info    { background:#3b82f6; }
     </style>
 </head>
 <body>
 
+<div id="toast-container"></div>
 <div class="loader" id="loader"></div>
 
 <div id="login-section">
@@ -334,6 +351,10 @@
         <div class="logo">Here</div>
         <div class="school-badge">사하제일간호학원</div>
     </div>
+    <div class="payment-warning-banner" id="payment-warning-banner">
+        <strong>⚠️ 학원 이용료 미납 안내</strong>
+        <span>출결 기능은 정상 이용 가능합니다. 기타 서비스 문의는 원장님께 연락해주세요.</span>
+    </div>
 
     <div class="user-card">
         <div class="user-row">
@@ -350,11 +371,18 @@
                     <div class="circle" style="background:#eff6ff;border:1px solid #bfdbfe;color:#3b82f6;" id="circle-early">0</div>
                     <div class="stat-label">조퇴</div>
                 </div>
-                <div class="stat-circle">
-                    <div class="circle" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#059669;" id="circle-out">0</div>
-                    <div class="stat-label">외출</div>
-                </div>
             </div>
+        </div>
+        <div class="practice-timeline">
+            <div class="tl-dates">
+                <span id="tl-start">-</span>
+                <span id="tl-end">-</span>
+            </div>
+            <div class="tl-track">
+                <div class="tl-fill" id="tl-fill" style="width:0%"></div>
+                <div class="tl-dot" id="tl-dot" style="left:0%"></div>
+            </div>
+            <div class="tl-dday" id="tl-dday"></div>
         </div>
     </div>
 
@@ -499,7 +527,7 @@
             <div class="sign-sub">날짜를 탭 → 서명 후 일괄적용 하세요</div>
             <div id="bs-student-rows" class="bs-att-table"></div>
             <div class="sign-btns" style="margin-top:10px;">
-                <button class="sign-next" onclick="goSignStep(2)">다음 → 담당자 인증</button>
+                <button class="sign-next" onclick="requireAllStudentSigs()">다음 → 담당자 인증</button>
             </div>
             <button class="modal-close" onclick="closeBottomModal('sign-bottom-modal')">취소</button>
         </div>
@@ -811,87 +839,18 @@
 </div>
 
 <!-- 원장님 섹션 -->
-<div id="admin-section">
-<div style="max-width:480px;margin:0 auto;padding-bottom:40px;">
-
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #333;">
-    <div style="font-size:18px;font-weight:700;">⚙️ 관리자 메뉴</div>
-    <button onclick="adminLogout()" style="background:#374151;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;">로그아웃</button>
+<!-- 원장님 버전 선택 오버레이 -->
+<div id="admin-version-overlay" style="display:none;position:fixed;inset:0;background:rgba(30,57,50,0.92);z-index:999998;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:40px 32px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="font-size:32px;margin-bottom:8px;">☕</div>
+    <div style="font-size:20px;font-weight:700;color:#006241;margin-bottom:6px;letter-spacing:-0.01em;">관리자 환경 선택</div>
+    <div style="font-size:13px;color:rgba(0,0,0,0.58);margin-bottom:28px;">사용 중인 기기를 선택해주세요.<br>다음 로그인 시 자동으로 이동합니다.</div>
+    <button onclick="selectAdminVersion('mobile')" style="width:100%;padding:16px;background:#fff;border:1.5px solid #00754A;color:#00754A;border-radius:50px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;letter-spacing:-0.01em;">📱 모바일 — 빠른 확인</button>
+    <button onclick="selectAdminVersion('pc')"     style="width:100%;padding:16px;background:#00754A;border:none;color:#fff;border-radius:50px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:-0.01em;">🖥️ PC — 전체 기능</button>
+    <div style="margin-top:16px;font-size:11px;color:rgba(0,0,0,0.4);">설정은 언제든 변경 가능합니다</div>
   </div>
-
-  <div style="display:flex;gap:4px;margin-bottom:20px;background:#111;border-radius:10px;padding:4px;">
-    <button id="tab-btn-student" onclick="switchAdminTab('student')" style="flex:1;padding:10px 0;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#2563eb;color:#fff;">👤 학생관리</button>
-    <button id="tab-btn-class"   onclick="switchAdminTab('class')"   style="flex:1;padding:10px 0;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#94a3b8;">📚 반관리</button>
-    <button id="tab-btn-hospital" onclick="switchAdminTab('hospital')" style="flex:1;padding:10px 0;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#94a3b8;">🏥 병원관리</button>
-  </div>
-
-  <!-- 탭1: 학생관리 -->
-  <div id="admin-tab-student">
-    <div style="background:#1a1a2e;border-radius:12px;padding:20px;margin-bottom:16px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#60a5fa;">🏥 실습병원 변경</div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">반 필터</label>
-        <select id="admin-class-filter" onchange="adminFilterStudents()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
-          <option value="">전체 학생</option>
-        </select>
-      </div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">학생 선택</label>
-        <select id="admin-student-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
-          <option value="">학생을 선택해주세요</option>
-        </select>
-      </div>
-      <div style="margin-bottom:16px;">
-        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">변경할 병원</label>
-        <select id="admin-hospital-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
-          <option value="">병원을 선택해주세요</option>
-        </select>
-      </div>
-      <button onclick="adminChangeHospital()" style="width:100%;padding:14px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">✅ 병원 변경</button>
-    </div>
-  </div>
-
-  <!-- 탭2: 반관리 -->
-  <div id="admin-tab-class" style="display:none;">
-    <div style="background:#1a1a2e;border-radius:12px;padding:20px;margin-bottom:16px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#60a5fa;">➕ 반 추가</div>
-      <div style="display:flex;gap:8px;">
-        <input id="new-class-name" type="text" placeholder="반 이름 (예: 1반)" style="flex:1;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;font-size:14px;">
-        <button onclick="adminCreateClass()" style="padding:10px 18px;background:#10b981;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;">추가</button>
-      </div>
-    </div>
-    <div style="background:#1a1a2e;border-radius:12px;padding:20px;margin-bottom:16px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#60a5fa;">👤 학생 → 반 배정</div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">학생 선택</label>
-        <select id="assign-student-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
-          <option value="">학생을 선택해주세요</option>
-        </select>
-      </div>
-      <div style="margin-bottom:16px;">
-        <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px;">배정할 반</label>
-        <select id="assign-class-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid #374151;background:#0f172a;color:#fff;box-sizing:border-box;font-size:14px;">
-          <option value="">반을 선택해주세요</option>
-        </select>
-      </div>
-      <button onclick="adminAssignStudentToClass()" style="width:100%;padding:14px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">✅ 배정하기</button>
-    </div>
-    <div style="background:#1a1a2e;border-radius:12px;padding:20px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:12px;color:#60a5fa;">📋 반 목록</div>
-      <div id="admin-class-list"><div style="color:#94a3b8;font-size:13px;text-align:center;padding:20px;">불러오는 중...</div></div>
-    </div>
-  </div>
-
-  <!-- 탭3: 병원관리 -->
-  <div id="admin-tab-hospital" style="display:none;">
-    <div style="background:#1a1a2e;border-radius:12px;padding:20px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#60a5fa;">🏥 등록 병원 목록</div>
-      <div id="admin-hospital-list"></div>
-    </div>
-  </div>
-
 </div>
-</div>
+
 
     <!-- PIN/비밀번호 인증 모달 -->
 <div class="sig-modal-overlay" id="pin-modal" style="z-index:10000;">
@@ -1005,13 +964,13 @@ let missingManagerPhone = '';
                     showLoader(false);
                     const savedId = localStorage.getItem('realKakaoId');
                     if (savedId) { currentUser.kakaoId = savedId; initializeSession(); await verifyStudent(); }
-                    else { alert('카카오 로그인 실패.\n다시 시도해주세요.'); initializeSession(); }
+                    else { showToast('카카오 로그인 실패.\n다시 시도해주세요.', 'error'); initializeSession(); }
                 }
             } catch(e) {
                 showLoader(false);
                 const savedId = localStorage.getItem('realKakaoId');
                 if (savedId) { currentUser.kakaoId = savedId; initializeSession(); await verifyStudent(); }
-                else { alert('서버 연결 실패.\n새로고침 해주세요.'); initializeSession(); }
+                else { showToast('서버 연결 실패.\n새로고침 해주세요.', 'error'); initializeSession(); }
             }
         } else {
             initializeSession();
@@ -1032,7 +991,7 @@ let missingManagerPhone = '';
 
     // ==================== 카카오 로그인 ====================
     function loginWithKakao() {
-        if (remainingTime <= 0) { alert('세션 만료. 새로고침 해주세요.'); return; }
+        if (remainingTime <= 0) { showToast('세션 만료. 새로고침 해주세요.', 'warning'); return; }
         const REST_API_KEY = 'ca34b3c2a0cf2d0fe87d9f18b39aa8d8';
         const REDIRECT_URI = 'https://knadlg1.github.io/test/';
         const kakaoURL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
@@ -1078,7 +1037,6 @@ let missingManagerPhone = '';
             if (!silent) showLoader(true);
 
         let result = null;
-alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kakaoId);  // 디버그1
 
         // Firestore에서 먼저 조회
         try {
@@ -1086,14 +1044,12 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
             const docSnap = await window.fsGetDoc(docRef);
             if (docSnap.exists()) {
     const s = docSnap.data();
-    alert('Firestore 데이터: status=' + s.status + ', role=' + s.role);  // 디버그2
     if (s.status === 'pending') {
         result = { status: 'pending', name: s.name };
                 } else {
         result = { ...s, status: 'found' };
     }
 } else {
-    alert('Firestore 문서 없음! kakaoId=' + currentUser.kakaoId);  // 디버그3
 }
         } catch(fsErr) {
             console.warn('Firestore 조회 실패, GAS로 폴백:', fsErr);
@@ -1119,7 +1075,7 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
                 const authOk = await ensureWebAuthn(currentUser.kakaoId, result.name);
                 if (!authOk) {
                     showLoader(false);
-                    alert('생체 인증에 실패했습니다.\n다시 시도해주세요.');
+                    showToast('생체 인증에 실패했습니다.\n다시 시도해주세요.', 'error');
                     return;
                 }
             }
@@ -1137,7 +1093,6 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
     if (!silent) {
         showLoader(false);
         if (currentUser.role === 'admin') {
-    alert('admin 진입: ' + currentUser.role);  // 임시 디버그
     showAdminSection();
         } else {
             showMainSection();
@@ -1149,7 +1104,7 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
     }
         } else if (result.status === 'pending') {
             showLoader(false);
-            alert('⏳ 원장님 승인 대기 중입니다.\n승인 후 이용 가능합니다.');
+            showToast('⏳ 원장님 승인 대기 중입니다.\n승인 후 이용 가능합니다.', 'warning');
         } else {
             if (silent) return;
             showLoader(false);
@@ -1315,6 +1270,20 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
             }
         }
 
+        // 원장님 결제 상태 확인 (학생 출결엔 영향 없음, 배너만 표시)
+        try {
+            const acId = (studentSnap.exists() && studentSnap.data().academyId) || CONFIG.ACADEMY_ID;
+            const dirQ = window.fsQuery(
+                window.fsCollection(window.db, 'directors'),
+                window.fsWhere('academyId', '==', acId),
+                window.fsWhere('status', '==', 'approved')
+            );
+            const dirSnap = await window.fsGetDocs(dirQ);
+            let overdue = false;
+            dirSnap.forEach(d => { if (d.data().paymentStatus === 'overdue') overdue = true; });
+            document.getElementById('payment-warning-banner').style.display = overdue ? 'block' : 'none';
+        } catch(e) { /* 결제 컬렉션 없으면 무시 */ }
+
         // 출결 기록 전체 조회
         const q = window.fsQuery(
             window.fsCollection(window.db, 'attendance'),
@@ -1326,19 +1295,22 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
         snap.forEach(d => {
             const rec = d.data();
             if (!rec.inTime || !rec.outTime) return;
+            // 실습 기간 범위 밖은 제외
+            if (!rec.date || rec.date < practiceStart || rec.date > practiceEnd) return;
             const [inH, inM]   = rec.inTime.split(':').map(Number);
             const [outH, outM] = rec.outTime.split(':').map(Number);
-            const rawMins = (outH * 60 + outM) - (inH * 60 + inM);
+            const effectiveIn  = Math.max(inH * 60 + inM, 540); // 09:00 이전 출근은 09:00 기준
+            const rawMins = (outH * 60 + outM) - effectiveIn;
             if (rawMins <= 0) return;
-            // 4시간 초과 시 30분 휴게 차감
-            const workMins = rawMins > 240 ? rawMins - 30 : rawMins;
+            // 휴게 차감: 4시간 초과~8시간=30분, 8시간 초과=60분
+            const workMins = rawMins > 480 ? rawMins - 60 : rawMins > 240 ? rawMins - 30 : rawMins;
             totalMinutes += workMins;
             // 주말 제외하고 지각/조퇴 판단
-            const dow = rec.date ? new Date(rec.date + 'T00:00:00').getDay() : -1;
+            const dow = new Date(rec.date + 'T00:00:00').getDay();
             const isWeekend = dow === 0 || dow === 6;
             if (!isWeekend) {
-                if (inH * 60 + inM > 540)  tardyCount++; // 09:01 이상
-                if (outH * 60 + outM < 989) earlyCount++; // 16:29 미만
+                if (effectiveIn > 540)        tardyCount++; // 09:01 이상
+                if (outH * 60 + outM < 989)   earlyCount++; // 16:29 미만
             }
         });
         const totalHours = Math.round(totalMinutes / 60 * 10) / 10;
@@ -1362,14 +1334,31 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
             }
             return count;
         }
-        const today   = new Date().toISOString().slice(0, 10);
+        const today   = todayKST();
         const capDate = today < practiceEnd ? today : practiceEnd;
         const stdHours = countWorkDays(practiceStart, capDate) * 7;
+
+        // 실습기간 타임라인 업데이트
+        {
+            const tlS = new Date(practiceStart + 'T00:00:00');
+            const tlE = new Date(practiceEnd   + 'T00:00:00');
+            const tlT = new Date(todayKST()    + 'T00:00:00');
+            const totalDays   = (tlE - tlS) / 86400000;
+            const elapsedDays = Math.max(0, Math.min((tlT - tlS) / 86400000, totalDays));
+            const pct  = totalDays > 0 ? Math.round(elapsedDays / totalDays * 100) : 0;
+            const dday = Math.ceil((tlE - tlT) / 86400000);
+            const fmt2 = s => s.slice(2).replace(/-/g, '.');
+            document.getElementById('tl-start').textContent = fmt2(practiceStart);
+            document.getElementById('tl-end').textContent   = fmt2(practiceEnd);
+            document.getElementById('tl-fill').style.width  = pct + '%';
+            document.getElementById('tl-dot').style.left    = pct + '%';
+            document.getElementById('tl-dday').textContent  =
+                dday > 0 ? '종료까지 D-' + dday : dday === 0 ? '오늘 종료' : '실습 완료 ✓';
+        }
 
         // UI 업데이트
         document.getElementById('circle-tardy').textContent = tardyCount;
         document.getElementById('circle-early').textContent = earlyCount;
-        document.getElementById('circle-out').textContent   = 0;
         document.getElementById('stat-my-hours').textContent  = totalHours + '시간';
         document.getElementById('stat-std-hours').textContent = stdHours   + '시간';
         document.getElementById('progress-fill').style.width     = Math.min(Math.round(totalHours / 780 * 100), 100) + '%';
@@ -1382,7 +1371,7 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
     function checkMissingSignatures() {
         if (!currentUser.intervals) return;
         const hasPending = currentUser.intervals.some(i => i.status === 'available');
-        if (hasPending) alert("🚨 [학원 알림]\n밀린 실습근무카드 서명이 있습니다!\n출퇴근 처리 후 반드시 서명을 완료해주세요.");
+        if (hasPending) showToast("🚨 [학원 알림]\n밀린 실습근무카드 서명이 있습니다!\n출퇴근 처리 후 반드시 서명을 완료해주세요.", 'warning');
     }
     async function doCheckIn()  { checkMissingSignatures(); await processAttendance('출근'); }
     async function doCheckOut() { checkMissingSignatures(); await processAttendance('퇴근'); }
@@ -1401,7 +1390,7 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
         if (!authOk) {
             overlay.style.display = 'none';
             if (type === '출근') inBtn.disabled = false; else outBtn.disabled = false;
-            alert('본인 인증에 실패했습니다.\n등록된 기기에서 다시 시도해주세요.');
+            showToast('본인 인증에 실패했습니다.\n등록된 기기에서 다시 시도해주세요.', 'error');
             return;
         }
 
@@ -1415,7 +1404,7 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
             if (dist > allowedDist) {
                 overlay.style.display = 'none';
                 if (type === '출근') inBtn.disabled = false; else outBtn.disabled = false;
-                alert(`📍 병원에서 ${Math.round(dist)}m 떨어져 있습니다.\n(허용: ${Math.round(allowedDist)}m 이내)`);
+                showToast(`📍 병원에서 ${Math.round(dist)}m 떨어져 있습니다.\n(허용: ${Math.round(allowedDist)}m 이내)`, 'warning');
                 return;
             }
 
@@ -1475,19 +1464,19 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
                     badge.className = 'new-status-badge done'; badge.textContent = '실습 완료';
                 }
             } else if (result.status === 'duplicate') {
-                alert(type + ' 처리가 이미 완료되었습니다.');
+                showToast(type + ' 처리가 이미 완료되었습니다.', 'success');
                 if (type === '출근') inBtn.disabled = true; else outBtn.disabled = true;
             } else {
-                alert('❌ 처리 실패: ' + (result.message || ''));
+                showToast('❌ 처리 실패: ' + (result.message || ''), 'error');
                 if (type === '출근') inBtn.disabled = false; else outBtn.disabled = false;
             }
         } catch(error) {
             overlay.style.display = 'none';
             if (type === '출근') inBtn.disabled = false; else outBtn.disabled = false;
-            if (error.code === 1) alert('📍 위치 권한을 허용해주세요.');
-            else if (error.code === 2) alert('📍 GPS 기능을 켜주세요.');
-            else if (error.code === 3) alert('📍 실외나 창가로 이동해주세요.');
-            else alert('❌ 오류가 발생했습니다. 다시 시도해주세요.');
+            if (error.code === 1) showToast('📍 위치 권한을 허용해주세요.', 'error');
+            else if (error.code === 2) showToast('📍 GPS 기능을 켜주세요.', 'error');
+            else if (error.code === 3) showToast('📍 실외나 창가로 이동해주세요.', 'error');
+            else showToast('❌ 오류가 발생했습니다. 다시 시도해주세요.', 'error');
         }
     }
 
@@ -1558,23 +1547,19 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
         function openLastInterval() {
         if (!currentUser.intervals) return;
         const availIdx = currentUser.intervals.findIndex(i => i.status === 'available');
-        if (availIdx === -1) { alert('현재 서명 가능한 회차가 없습니다.'); return; }
+        if (availIdx === -1) { showToast('현재 서명 가능한 회차가 없습니다.', 'error'); return; }
         startBsSign(availIdx);
     }
 
-    window.insertTestData = async function() {
-        if (!window.db || !currentUser.kakaoId) { alert('로그인 후 콘솔에서 실행해주세요.'); return; }
-        try {
-            const stuRef = window.fsDoc(window.db, 'students', String(currentUser.kakaoId));
-            await window.fsUpdateDoc(stuRef, { practiceStart: '2026-04-27', practiceEnd: '2026-07-18' });
-            const testDates = ['2026-05-04','2026-05-05','2026-05-06','2026-05-07','2026-05-08'];
-            for (const dt of testDates) {
-                const ref = window.fsDoc(window.db, 'attendance', String(currentUser.kakaoId)+'_'+dt);
-                await window.fsSetDoc(ref, { kakaoId:currentUser.kakaoId, name:currentUser.name, date:dt, inTime:'09:00', outTime:'18:00', workMinutes:540 }, { merge:true });
-            }
-            alert('✅ 테스트 데이터 삽입 완료!\n새로고침하면 지난주(05/04~05/10) 서명하기 버튼이 나타납니다.');
-        } catch(e) { alert('삽입 실패: ' + e.message); }
-    };
+
+    function requireAllStudentSigs() {
+        const unsigned = bsAttendanceRows.filter(r => !r.studentSig);
+        if (unsigned.length > 0) {
+            showToast(unsigned.length + '개 날짜에 학생 서명이 없습니다.', 'error');
+            return;
+        }
+        goSignStep(2);
+    }
 
     function goSignStep(step) {
     document.querySelectorAll('.sign-step').forEach(el => el.classList.remove('active'));
@@ -1615,8 +1600,8 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
 
     async function requestBsOTP() {
     const phone = document.getElementById('bs-manager-phone').value.trim();
-    if (!phone) { alert('휴대폰 번호를 입력해주세요.'); return; }
-    if (!document.getElementById('bs-otp-consent-check').checked) { alert('개인정보 수집 동의를 체크해주세요.'); return; }
+    if (!phone) { showToast('휴대폰 번호를 입력해주세요.', 'info'); return; }
+    if (!document.getElementById('bs-otp-consent-check').checked) { showToast('개인정보 수집 동의를 체크해주세요.', 'info'); return; }
     bsManagerPhone = phone;
     showLoader(true);
     try {
@@ -1628,26 +1613,29 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
         if (result.status === 'success') {
             document.getElementById('otp-request-area').style.display = 'none';
             document.getElementById('otp-verify-area').style.display = 'block';
-            alert('인증번호가 발송되었습니다.');
-        } else { alert('발송 실패: ' + (result.message||'')); }
-    } catch(e) { showLoader(false); alert('서버 오류.'); }
+            showToast('인증번호가 발송되었습니다.', 'success');
+        } else { showToast('발송 실패: ' + (result.message||''), 'error'); }
+    } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
 }
 
         async function verifyBsOTP() {
     const otp = document.getElementById('bs-otp-input').value.trim();
-    if (!otp) { alert('인증번호를 입력해주세요.'); return; }
-    if (otp === '0000') { alert('인증 완료! 담당자 서명을 받아주세요.'); goSignStep(3); return; }
+    if (!otp) { showToast('인증번호를 입력해주세요.', 'info'); return; }
         showLoader(true);
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'verifyOTP', otp, phone:bsManagerPhone }) });
             const result = await response.json();
             showLoader(false);
-            if (result.status === 'success') { alert('인증 완료! 담당자 서명을 받아주세요.'); goSignStep(3); }
-            else { alert('인증번호가 일치하지 않습니다.'); }
-        } catch(e) { showLoader(false); alert('서버 오류.'); }
+            if (result.status === 'success') { showToast('인증 완료! 담당자 서명을 받아주세요.', 'success'); goSignStep(3); }
+            else { showToast('인증번호가 일치하지 않습니다.', 'info'); }
+        } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
     }
 
     async function executeBsSubmit() {
+    const missingStu = bsAttendanceRows.filter(r => !r.studentSig);
+    const missingMgr = bsAttendanceRows.filter(r => !r.managerSig);
+    if (missingStu.length > 0) { showToast(missingStu.length + '개 날짜에 학생 서명이 없습니다.', 'error'); return; }
+    if (missingMgr.length > 0) { showToast(missingMgr.length + '개 날짜에 담당자 서명이 없습니다.', 'error'); return; }
     showLoader(true);
     try {
         const sigRef = window.fsDoc(window.db, 'weeklySignatures',
@@ -1661,15 +1649,15 @@ alert('verifyStudent 시작! silent=' + silent + ', kakaoId=' + currentUser.kaka
             managerPhone: bsManagerPhone,
             attendance: bsAttendanceRows.map(r => ({
                 date: r.date, inTime: r.inTime, outTime: r.outTime,
-                studentSig: r.studentSig || '', managerSig: r.managerSig || ''
+                studentSig: r.studentSig, managerSig: r.managerSig
             })),
             submittedAt: new Date().toISOString()
         });
         showLoader(false);
-        alert('🎉 실습근무카드 서명이 완료되었습니다!');
+        showToast('🎉 실습근무카드 서명이 완료되었습니다!', 'success');
         closeBottomModal('sign-bottom-modal');
         location.reload();
-    } catch(e) { showLoader(false); alert('저장 실패: ' + e.message); }
+    } catch(e) { showLoader(false); showToast('저장 실패: ' + e.message, 'error'); }
 }
 
     // ==================== 실습인증 서명 (새 플로우) ====================
@@ -1748,7 +1736,7 @@ function applyBsSig(applyAll) {
     const data = c.getContext('2d').getImageData(0,0,c.width,c.height).data;
     let hasContent = false;
     for (let i=3; i<data.length; i+=4) { if (data[i]>0) { hasContent=true; break; } }
-    if (!hasContent) { alert('서명을 먼저 그려주세요.'); return; }
+    if (!hasContent) { showToast('서명을 먼저 그려주세요.', 'info'); return; }
     const sigData = c.toDataURL('image/png').split(',')[1];
     if (applyAll) {
         bsAttendanceRows.forEach(row => { if (bsSigPadType==='student') row.studentSig=sigData; else row.managerSig=sigData; });
@@ -1834,7 +1822,7 @@ async function loadIntervals() {
         const practiceStart = sd.practiceStart || '2026-02-02';
         const practiceEnd   = sd.practiceEnd   || '2026-07-18';
         const computed = computeIntervals(practiceStart, practiceEnd);
-        const today = fmt(new Date());
+        const today = todayKST();
         const intervals = await Promise.all(computed.map(async inv => {
             try {
                 // 이 주 다음 월요일 = 일요일(endDate) + 1일
@@ -1878,8 +1866,8 @@ async function loadIntervals() {
         const dateInput = document.getElementById('sick-leave-date').value;
         const fileInput = document.getElementById('sick-leave-files');
         const btn = document.getElementById('sick-submit-btn');
-        if (!dateInput) { alert('날짜를 선택해주세요.'); return; }
-        if (fileInput.files.length === 0) { alert('최소 1장 이상 첨부해주세요.'); return; }
+        if (!dateInput) { showToast('날짜를 선택해주세요.', 'info'); return; }
+        if (fileInput.files.length === 0) { showToast('최소 1장 이상 첨부해주세요.', 'info'); return; }
         btn.disabled = true; btn.textContent = '업로드 중...⏳';
         try {
             const base64Images = [];
@@ -1889,9 +1877,9 @@ async function loadIntervals() {
             }
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'uploadProofDocument', kakaoId:currentUser.kakaoId, name:currentUser.name, requestType:'자진제출', date:dateInput, images:base64Images }) });
             const result = await response.json();
-            if (result.status === 'success') { alert('✅ 서류 제출 완료!'); closeBottomModal('sick-bottom-modal'); location.reload(); }
-            else { alert('❌ 제출 실패: ' + result.message); }
-        } catch(e) { alert('서버 오류로 업로드 실패.'); }
+            if (result.status === 'success') { showToast('✅ 서류 제출 완료!', 'success'); closeBottomModal('sick-bottom-modal'); location.reload(); }
+            else { showToast('❌ 제출 실패: ' + result.message, 'error'); }
+        } catch(e) { showToast('서버 오류로 업로드 실패.', 'error'); }
         finally { btn.disabled = false; btn.textContent = '서류 제출하기'; }
     }
 
@@ -1908,8 +1896,8 @@ async function loadIntervals() {
         const dateInput = document.getElementById('sick-leave-date-popup').value;
         const fileInput = document.getElementById('sick-leave-files-popup');
         const btn = document.getElementById('sick-submit-btn-popup');
-        if (!dateInput) { alert('날짜를 선택해주세요.'); return; }
-        if (fileInput.files.length === 0) { alert('최소 1장 이상 첨부해주세요.'); return; }
+        if (!dateInput) { showToast('날짜를 선택해주세요.', 'info'); return; }
+        if (fileInput.files.length === 0) { showToast('최소 1장 이상 첨부해주세요.', 'info'); return; }
         btn.disabled = true; btn.textContent = '업로드 중...⏳';
         try {
             const base64Images = [];
@@ -1919,9 +1907,9 @@ async function loadIntervals() {
             }
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'uploadProofDocument', kakaoId:currentUser.kakaoId, name:currentUser.name, requestType:currentPendingRequest||'자진제출', date:dateInput, images:base64Images }) });
             const result = await response.json();
-            if (result.status === 'success') { alert('✅ 서류 제출 완료!'); closeSickLeaveModal(); location.reload(); }
-            else { alert('❌ 제출 실패: ' + result.message); }
-        } catch(e) { alert('서버 오류.'); }
+            if (result.status === 'success') { showToast('✅ 서류 제출 완료!', 'success'); closeSickLeaveModal(); location.reload(); }
+            else { showToast('❌ 제출 실패: ' + result.message, 'error'); }
+        } catch(e) { showToast('서버 오류.', 'error'); }
         finally { btn.disabled = false; btn.textContent = '제출'; }
     }
 
@@ -1940,9 +1928,9 @@ async function loadIntervals() {
         const start = document.getElementById('cert-start').value;
         const end   = document.getElementById('cert-end').value;
         const btn   = document.getElementById('cert-submit-btn');
-        if (!rrn.match(/^\d{6}-\d{1}$/)) { alert('주민등록번호를 올바르게 입력해주세요.\n(예: 940219-1)'); return; }
-        if (!start || !end) { alert('기간을 선택해주세요.'); return; }
-        if (start > end)    { alert('종료일이 시작일보다 빠를 수 없습니다.'); return; }
+        if (!rrn.match(/^\d{6}-\d{1}$/)) { showToast('주민등록번호를 올바르게 입력해주세요.\n(예: 940219-1)', 'info'); return; }
+        if (!start || !end) { showToast('기간을 선택해주세요.', 'info'); return; }
+        if (start > end)    { showToast('종료일이 시작일보다 빠를 수 없습니다.', 'error'); return; }
         btn.disabled = true; btn.textContent = '요청 중...⏳';
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'generateCertificate', kakaoId:currentUser.kakaoId, rrn, startDate:start, endDate:end }) });
@@ -1954,11 +1942,11 @@ async function loadIntervals() {
                     await window.fsUpdateDoc(docRef, { certStatus: 'requested', certRequestedAt: new Date().toISOString() });
                 } catch(fsErr) { console.warn('Firestore 상태 저장 실패:', fsErr); }
                 updateCertBubble('requested');
-                alert('🎉 수강증명서 발급 요청 완료!\n원장님 승인 후 다운로드 가능합니다.');
+                showToast('🎉 수강증명서 발급 요청 완료!\n원장님 승인 후 다운로드 가능합니다.', 'success');
                 closeBottomModal('cert-bottom-modal');
             }
-            else { alert('❌ 발급 실패: ' + result.message); }
-        } catch(e) { alert('서버 연결 실패.'); }
+            else { showToast('❌ 발급 실패: ' + result.message, 'error'); }
+        } catch(e) { showToast('서버 연결 실패.', 'error'); }
         finally { btn.disabled = false; btn.textContent = '발급하기'; }
     }
 
@@ -2049,7 +2037,27 @@ async function loadIntervals() {
     }
 
     // ==================== 유틸 ====================
+    function todayKST() {
+        const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        return kst.getUTCFullYear() + '-' +
+               String(kst.getUTCMonth() + 1).padStart(2, '0') + '-' +
+               String(kst.getUTCDate()).padStart(2, '0');
+    }
+
     function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
+
+    function showToast(msg, type = 'info') {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = 'toast t-' + type;
+        t.textContent = msg;
+        c.appendChild(t);
+        requestAnimationFrame(() => { t.classList.add('show'); });
+        setTimeout(() => {
+            t.classList.remove('show');
+            setTimeout(() => t.remove(), 300);
+        }, 3000);
+    }
 
     async function fetchWithRetry(url, options, retries=3) {
     for (let i=0; i<retries; i++) {
@@ -2101,24 +2109,24 @@ function closeRegisterModal() {
 
 async function sendRegisterOTP() {
     const phone = document.getElementById('reg-phone').value.trim();
-    if (!/^01[0-9]{8,9}$/.test(phone)) { alert('휴대폰번호를 정확히 입력해주세요.'); return; }
+    if (!/^01[0-9]{8,9}$/.test(phone)) { showToast('휴대폰번호를 정확히 입력해주세요.', 'info'); return; }
     try {
         const res = await fetchWithRetry(CONFIG.GAS_URL, {
             body: JSON.stringify({ action:'requestOTP', phone, kakaoId:'new', name:'신규' })
         });
         const r = await res.json();
-        if (r.status === 'success') alert('인증번호가 전송되었습니다.');
-        else alert('전송 실패. 다시 시도해주세요.');
-    } catch(e) { alert('서버 오류. 다시 시도해주세요.'); }
+        if (r.status === 'success') showToast('인증번호가 전송되었습니다.', 'info');
+        else showToast('전송 실패. 다시 시도해주세요.', 'error');
+    } catch(e) { showToast('서버 오류. 다시 시도해주세요.', 'error'); }
 }
 
 async function submitNewStudent() {
     const name  = document.getElementById('reg-name').value.trim();
     const phone = document.getElementById('reg-phone').value.trim();
     const otp   = document.getElementById('reg-otp').value.trim();
-    if (!name)  { alert('이름을 입력해주세요.'); return; }
-    if (!/^01[0-9]{8,9}$/.test(phone)) { alert('휴대폰번호를 정확히 입력해주세요.'); return; }
-    if (!otp)   { alert('인증번호를 입력해주세요.'); return; }
+    if (!name)  { showToast('이름을 입력해주세요.', 'info'); return; }
+    if (!/^01[0-9]{8,9}$/.test(phone)) { showToast('휴대폰번호를 정확히 입력해주세요.', 'info'); return; }
+    if (!otp)   { showToast('인증번호를 입력해주세요.', 'info'); return; }
 
     showLoader(true);
     try {
@@ -2127,7 +2135,7 @@ async function submitNewStudent() {
             body: JSON.stringify({ action:'verifyOTP', otp, phone })
         });
         const otpResult = await otpRes.json();
-        if (otpResult.status !== 'success') { showLoader(false); alert('인증번호가 올바르지 않습니다.'); return; }
+        if (otpResult.status !== 'success') { showLoader(false); showToast('인증번호가 올바르지 않습니다.', 'error'); return; }
 
         // 신규 등록 (pending 상태로)
         const regRes = await fetchWithRetry(CONFIG.GAS_URL, {
@@ -2143,9 +2151,9 @@ async function submitNewStudent() {
             document.getElementById('register-step1').style.display = 'none';
             document.getElementById('register-step2').style.display = 'block';
         } else {
-            alert('등록 실패. 학원으로 문의해주세요.');
+            showToast('등록 실패. 학원으로 문의해주세요.', 'error');
         }
-    } catch(e) { showLoader(false); alert('서버 오류. 다시 시도해주세요.'); }
+    } catch(e) { showLoader(false); showToast('서버 오류. 다시 시도해주세요.', 'error'); }
 }
 
             // ==================== PIN 비밀번호 인증 ====================
@@ -2302,9 +2310,25 @@ async function submitNewStudent() {
 }
 
         async function ensureWebAuthn(kakaoId, name) {
+    // WebAuthn 자체 미지원 기기 → 앱 PIN
     if (!window.PublicKeyCredential) {
         return await verifyOrSetPin(kakaoId);
     }
+
+    // 생체인식(또는 화면잠금) 등록 여부 사전 확인
+    let hasPlatformAuth = false;
+    try {
+        hasPlatformAuth = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    } catch(e) {
+        hasPlatformAuth = false;
+    }
+
+    // 생체인식 없는 기기 → 앱 PIN으로 바로 이동 (WebAuthn 시도 안 함)
+    if (!hasPlatformAuth) {
+        return await verifyOrSetPin(kakaoId);
+    }
+
+    // 생체인식 있는 기기 → WebAuthn
     const credId = localStorage.getItem('webAuthnCredId');
     if (!credId) {
         const registered = await registerWebAuthn(kakaoId, name);
@@ -2400,7 +2424,7 @@ async function submitNewStudent() {
                 if (inv) inv.noRecords = true;
             }
             goBackToMain(true);
-            setTimeout(() => alert('이 기간에 근무 기록이 없어 서명이 필요하지 않습니다.'), 200);
+            setTimeout(() => showToast('이 기간에 근무 기록이 없어 서명이 필요하지 않습니다.'), 200, 'info');
             return;
         }
         document.getElementById('mode-switch-btn').style.display = 'block';
@@ -2438,7 +2462,7 @@ async function submitNewStudent() {
         function saveSignatureFromModal(mode) {
         if (!currentSigTarget) return;
         const srcCanvas = document.getElementById('modal-canvas');
-        if (isBlankCanvas(srcCanvas)) { alert('서명을 입력해주세요.'); return; }
+        if (isBlankCanvas(srcCanvas)) { showToast('서명을 입력해주세요.', 'info'); return; }
         const isStudent = currentSigTarget.classList.contains('student-canvas');
         const targets = mode==='all'
             ? document.querySelectorAll(isStudent?'.student-canvas':'.manager-canvas')
@@ -2468,7 +2492,7 @@ async function submitNewStudent() {
             const row = c.closest('.compact-record');
             if (row && row.dataset.absent !== 'true' && isBlankCanvas(c)) allSigned = false;
         });
-        if (!allSigned) { alert('모든 날짜에 학생 서명을 완료해주세요.'); return; }
+        if (!allSigned) { showToast('모든 날짜에 학생 서명을 완료해주세요.', 'error'); return; }
         openSigOTPModal(function(phone) {
             sigManagerMode = 'A';
             sigOtpPhone = phone;
@@ -2482,23 +2506,23 @@ async function submitNewStudent() {
         });
     }
         function submitFinalSignature() {
-        if (sigManagerMode === 'none') { alert('담당자 인증을 먼저 완료해주세요.'); return; }
+        if (sigManagerMode === 'none') { showToast('담당자 인증을 먼저 완료해주세요.', 'error'); return; }
         const rows = document.querySelectorAll('.compact-record:not([data-absent="true"])');
         for (const row of rows) {
             const idx = parseInt(row.dataset.recordIdx);
             const rec = currentRecordData[idx];
             if (rec && (!rec.checkIn || rec.checkIn==='-' || !rec.checkOut || rec.checkOut==='-')) {
-                alert(`${rec.month}월 ${rec.day}일에 출근 또는 퇴근 기록이 누락되어 제출할 수 없습니다.`);
+                showToast(`${rec.month}월 ${rec.day}일에 출근 또는 퇴근 기록이 누락되어 제출할 수 없습니다.`, 'error');
                 return;
             }
             const sc = row.querySelector('.student-canvas');
             const mc = row.querySelector('.manager-canvas');
             if (sc && isBlankCanvas(sc)) {
-                alert(`${rec ? rec.month+'월 '+rec.day+'일' : '일부 날짜'}에 학생 서명이 없습니다.`);
+                showToast(`${rec ? rec.month+'월 '+rec.day+'일' : '일부 날짜'}에 학생 서명이 없습니다.`, 'error');
                 return;
             }
             if (mc && isBlankCanvas(mc)) {
-                alert(`${rec ? rec.month+'월 '+rec.day+'일' : '일부 날짜'}에 담당자 서명이 없습니다.`);
+                showToast(`${rec ? rec.month+'월 '+rec.day+'일' : '일부 날짜'}에 담당자 서명이 없습니다.`, 'error');
                 return;
             }
         }
@@ -2535,9 +2559,9 @@ async function submitNewStudent() {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'submitToGoogleDoc', kakaoId:currentUser.kakaoId, name:currentUser.name, intervalStr:currentInterval.intervalStr, startDate:currentInterval.startDate, endDate:currentInterval.endDate, records }) });
             const result = await response.json();
             showLoader(false);
-            if (result.status==='success') { alert('🎉 실습근무카드 제출 완료!'); closeFinalConfirmModal(); goBackToMain(); location.reload(); }
-            else { alert('❌ 제출 실패: '+(result.message||'')); }
-        } catch(e) { showLoader(false); alert('서버 오류.'); }
+            if (result.status==='success') { showToast('🎉 실습근무카드 제출 완료!', 'success'); closeFinalConfirmModal(); goBackToMain(); location.reload(); }
+            else { showToast('❌ 제출 실패: '+(result.message||''), 'error'); }
+        } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
         finally { btn.disabled=false; btn.textContent='최종 제출하기'; }
     }
 
@@ -2576,7 +2600,7 @@ async function submitNewStudent() {
     }
         function completeMissingStudentSig() {
         const canvas = document.getElementById('missing-student-canvas');
-        if (isBlankCanvas(canvas)) { alert('서명을 입력해주세요.'); return; }
+        if (isBlankCanvas(canvas)) { showToast('서명을 입력해주세요.', 'info'); return; }
         missingStudentSigned = true;
         const dataUrl = canvas.toDataURL('image/png');
         document.getElementById('missing-student-sig-area').innerHTML=`<div style="position:relative;width:100%;"><img src="${dataUrl}" style="width:100%;border-radius:8px;display:block;"><button onclick="clearMissingStudentSig()" style="position:absolute;top:2px;right:2px;background:#ef4444;color:white;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;font-weight:bold;cursor:pointer;line-height:1;">✕</button></div>`;
@@ -2609,7 +2633,7 @@ async function submitNewStudent() {
     }
     function completeMissingManagerSig() {
         const canvas = document.getElementById('missing-manager-canvas');
-        if (isBlankCanvas(canvas)) { alert('서명을 입력해주세요.'); return; }
+        if (isBlankCanvas(canvas)) { showToast('서명을 입력해주세요.', 'info'); return; }
         missingManagerSigned = true;
         const dataUrl = canvas.toDataURL('image/png');
         document.getElementById('missing-manager-sig-area').innerHTML=`<div style="position:relative;width:100%;"><img src="${dataUrl}" style="width:100%;border-radius:8px;display:block;"><button onclick="clearMissingManagerSig()" style="position:absolute;top:2px;right:2px;background:#ef4444;color:white;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;font-weight:bold;cursor:pointer;line-height:1;">✕</button></div>`;
@@ -2658,42 +2682,35 @@ async function submitNewStudent() {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'submitMissingVacation', kakaoId:currentUser.kakaoId, name:currentUser.name, missingRecord:window.currentMissingRecord }) });
             const result = await response.json();
             showLoader(false);
-            if (result.status==='success') { alert('제출 완료!'); location.reload(); }
-            else { alert('제출 실패: '+(result.message||'')); }
-        } catch(e) { showLoader(false); alert('서버 오류.'); }
+            if (result.status==='success') { showToast('제출 완료!', 'success'); location.reload(); }
+            else { showToast('제출 실패: '+(result.message||''), 'error'); }
+        } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
     }
     async function requestManagerOTP() {
         const phone = document.getElementById('manager-phone-input').value.trim();
-        if (!phone) { alert('담당자 휴대폰 번호를 입력해주세요.'); return; }
+        if (!phone) { showToast('담당자 휴대폰 번호를 입력해주세요.', 'info'); return; }
         missingManagerPhone = phone;
         showLoader(true);
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'requestOTP', phone:phone, kakaoId:currentUser.kakaoId, name:currentUser.name }) });
             const result = await response.json();
             showLoader(false);
-            if (result.status==='success') { document.getElementById('otp-request-section').style.display='none'; document.getElementById('otp-verify-section').style.display='block'; alert('인증번호가 발송되었습니다.'); }
-            else { alert('발송 실패: '+result.message); }
-        } catch(e) { showLoader(false); alert('서버 오류.'); }
+            if (result.status==='success') { document.getElementById('otp-request-section').style.display='none'; document.getElementById('otp-verify-section').style.display='block'; showToast('인증번호가 발송되었습니다.', 'success'); }
+            else { showToast('발송 실패: '+result.message, 'error'); }
+        } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
     }
             async function verifyManagerOTP() {
         const otp = document.getElementById('manager-otp-input').value.trim();
-        if (!otp) { alert('인증번호를 입력해주세요.'); return; }
-        if (!document.getElementById('otp-consent-check').checked) { alert('개인정보 수집 동의를 체크해주세요.'); return; }
-        if (otp === '0000') {
-            alert('인증 완료. 서명을 진행해주세요.');
-            document.getElementById('otp-request-section').style.display='none';
-            document.getElementById('otp-verify-section').style.display='none';
-            document.getElementById('manager-signature-section').style.display='block';
-            return;
-        }
+        if (!otp) { showToast('인증번호를 입력해주세요.', 'info'); return; }
+        if (!document.getElementById('otp-consent-check').checked) { showToast('개인정보 수집 동의를 체크해주세요.', 'info'); return; }
         showLoader(true);
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({action:'verifyOTP', otp, phone:missingManagerPhone }) });
             const result = await response.json();
             showLoader(false);
-            if (result.status==='success') { alert('인증 완료. 서명을 진행해주세요.'); document.getElementById('otp-request-section').style.display='none'; document.getElementById('otp-verify-section').style.display='none'; document.getElementById('manager-signature-section').style.display='block'; checkMissingTimeSelected(); }
-            else { alert('인증번호가 일치하지 않습니다.'); }
-        } catch(e) { showLoader(false); alert('서버 오류.'); }
+            if (result.status==='success') { showToast('인증 완료. 서명을 진행해주세요.', 'success'); document.getElementById('otp-request-section').style.display='none'; document.getElementById('otp-verify-section').style.display='none'; document.getElementById('manager-signature-section').style.display='block'; checkMissingTimeSelected(); }
+            else { showToast('인증번호가 일치하지 않습니다.', 'info'); }
+        } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
     }
         async function submitMissingSignature() {
         const missing = window.currentMissingRecord;
@@ -2711,8 +2728,8 @@ async function submitNewStudent() {
         const studentSig = getSigData('missing-student-sig-area', 'missing-student-canvas');
         const managerSig = getSigData('missing-manager-sig-area', 'missing-manager-canvas');
 
-        if (!studentSig) { alert('학생 서명이 없습니다.'); return; }
-        if (!managerSig) { alert('담당자 서명이 없습니다.'); return; }
+        if (!studentSig) { showToast('학생 서명이 없습니다.', 'error'); return; }
+        if (!managerSig) { showToast('담당자 서명이 없습니다.', 'error'); return; }
 
         let inTime='', outTime='';
         if (missing.type==='출근'||missing.type==='출,퇴근') inTime=(document.getElementById('in-hour')||{}).value+':'+(document.getElementById('in-min')||{}).value;
@@ -2725,9 +2742,9 @@ async function submitNewStudent() {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'submitPendingMissingAttendance', kakaoId:currentUser.kakaoId, name:currentUser.name, missingRecord:missing, studentSignature:studentSig, managerSignature:managerSig, inTime, outTime, managerPhone:missingManagerPhone }) });
             const result = await response.json();
             showLoader(false);
-            if (result.status==='success') { alert('제출 완료!'); resetMissingSig(); document.getElementById('missing-alert-modal').style.display='none'; location.reload(); }
-            else { alert('제출 실패: '+(result.message||'')); }
-        } catch(e) { showLoader(false); alert('서버 오류.'); }
+            if (result.status==='success') { showToast('제출 완료!', 'success'); resetMissingSig(); document.getElementById('missing-alert-modal').style.display='none'; location.reload(); }
+            else { showToast('제출 실패: '+(result.message||''), 'error'); }
+        } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
         finally { btn.disabled=false; btn.textContent='제출하기'; }
     }
 
@@ -2747,7 +2764,7 @@ async function submitNewStudent() {
     }
     async function requestSigOTP() {
         const phone = document.getElementById('sig-otp-phone').value.trim();
-        if (!phone) { alert('휴대폰 번호를 입력해주세요.'); return; }
+        if (!phone) { showToast('휴대폰 번호를 입력해주세요.', 'info'); return; }
         sigOtpPhone = phone;
         showLoader(true);
         try {
@@ -2757,18 +2774,14 @@ async function submitNewStudent() {
             if (result.status === 'success') {
                 document.getElementById('sig-otp-phone-area').style.display = 'none';
                 document.getElementById('sig-otp-code-area').style.display  = 'block';
-                alert('인증번호가 발송되었습니다.');
-            } else { alert('발송 실패: ' + result.message); }
-        } catch(e) { showLoader(false); alert('서버 오류.'); }
+                showToast('인증번호가 발송되었습니다.', 'success');
+            } else { showToast('발송 실패: ' + result.message, 'error'); }
+        } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
     }
     async function verifySigOTP() {
         const otp = document.getElementById('sig-otp-code').value.trim();
-        if (!otp) { alert('인증번호를 입력해주세요.'); return; }
-if (!document.getElementById('otp-consent-check').checked) { alert('개인정보 수집 동의를 체크해주세요.'); return; }
-        if (otp === '0000') {
-            document.getElementById('sig-otp-modal').style.display = 'none';
-            if (sigOtpCallback) { sigOtpCallback(sigOtpPhone || 'test'); sigOtpCallback = null; }
-            return;
+        if (!otp) { showToast('인증번호를 입력해주세요.', 'info'); return; }
+if (!document.getElementById('otp-consent-check').checked) { showToast('개인정보 수집 동의를 체크해주세요.', 'info'); return; }
         }
         showLoader(true);
         try {
@@ -2778,8 +2791,8 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
             if (result.status === 'success') {
                 document.getElementById('sig-otp-modal').style.display = 'none';
                 if (sigOtpCallback) { sigOtpCallback(sigOtpPhone); sigOtpCallback = null; }
-            } else { alert('인증번호가 일치하지 않습니다.'); }
-        } catch(e) { showLoader(false); alert('서버 오류.'); }
+            } else { showToast('인증번호가 일치하지 않습니다.', 'info'); }
+        } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
     }
     function changeManager() {
         openSigOTPModal(function(phone) {
@@ -2819,35 +2832,35 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'approveMissingAttendance', recordId, type, inTime, outTime, row }) });
             const result = await response.json();
             showLoader(false);
-            if (result.status==='success') { alert('✅ 승인 완료!'); fetchPendingApprovals(); }
-            else { alert('승인 실패: '+result.message); }
-        } catch(e) { showLoader(false); alert('서버 오류.'); }
+            if (result.status==='success') { showToast('✅ 승인 완료!', 'success'); fetchPendingApprovals(); }
+            else { showToast('승인 실패: '+result.message, 'error'); }
+        } catch(e) { showLoader(false); showToast('서버 오류.', 'error'); }
     }
     async function sendAdminRequest() {
         const studentId = document.getElementById('req-student-select').value;
         const docType   = document.getElementById('req-doc-select').value;
-        if (!studentId) { alert('학생을 선택해주세요.'); return; }
+        if (!studentId) { showToast('학생을 선택해주세요.', 'info'); return; }
         const btn = document.getElementById('req-submit-btn'); btn.disabled=true;
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'sendDocumentRequest', targetKakaoId:studentId, docType }) });
             const result = await response.json();
-            if (result.status==='success') { alert('요청 완료!'); closeDocRequestModal(); }
-            else { alert('요청 실패: '+result.message); }
-        } catch(e) { alert('서버 오류.'); }
+            if (result.status==='success') { showToast('요청 완료!', 'success'); closeDocRequestModal(); }
+            else { showToast('요청 실패: '+result.message, 'error'); }
+        } catch(e) { showToast('서버 오류.', 'error'); }
         finally { btn.disabled=false; }
     }
     function closeDocRequestModal() { document.getElementById('doc-request-modal').style.display='none'; }
     async function submitHospitalEdit() {
         const studentId  = document.getElementById('edit-student-select').value;
         const hospitalEl = document.getElementById('edit-hospital-select');
-        if (!studentId || !hospitalEl.value) { alert('학생과 병원을 선택해주세요.'); return; }
+        if (!studentId || !hospitalEl.value) { showToast('학생과 병원을 선택해주세요.', 'info'); return; }
         const opt = hospitalEl.options[hospitalEl.selectedIndex];
         const btn = document.getElementById('hospital-submit-btn'); btn.disabled=true;
         try {
                         const docRef = window.fsDoc(window.db, 'students', String(studentId));
             await window.fsUpdateDoc(docRef, { hospital: opt.text, hospitalLat: parseFloat(opt.dataset.lat), hospitalLon: parseFloat(opt.dataset.lon) });
-            alert('정정 완료!'); closeHospitalEditModal();
-        } catch(e) { alert('서버 오류.'); }
+            showToast('정정 완료!', 'success'); closeHospitalEditModal();
+        } catch(e) { showToast('서버 오류.', 'error'); }
         finally { btn.disabled=false; }
     }
         function closeHospitalEditModal() { document.getElementById('hospital-edit-modal').style.display='none'; }
@@ -2874,35 +2887,25 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
         { name: '조이효요양',      lat: 35.090557, lon: 128.998752 },
     ];
 
-    let adminStudentsList = [];
-    let adminClassesList  = [];
 
     async function showAdminSection() {
-        document.getElementById('login-section').style.display  = 'none';
-        document.getElementById('main-section').style.display   = 'none';
-        document.getElementById('admin-section').style.display  = 'block';
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('main-section').style.display  = 'none';
+        showLoader(false);
 
-        // 병원 드롭다운 채우기
-        const hSel = document.getElementById('admin-hospital-select');
-        hSel.innerHTML = '<option value="">병원을 선택해주세요</option>';
-        HOSPITALS.forEach(h => {
-            const o = document.createElement('option');
-            o.value = h.name; o.dataset.lat = h.lat; o.dataset.lon = h.lon; o.textContent = h.name;
-            hSel.appendChild(o);
-        });
+        // 이전 선택이 있으면 바로 이동
+        const saved = localStorage.getItem('adminVersion');
+        if (saved === 'pc')     { window.location.href = 'admin.html';        return; }
+        if (saved === 'mobile') { window.location.href = 'admin-mobile.html'; return; }
 
-        // 병원 목록 탭
-        document.getElementById('admin-hospital-list').innerHTML = HOSPITALS.map((h, i) =>
-            `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1e293b;">
-                <div>
-                    <div style="font-size:14px;font-weight:600;color:#e2e8f0;">${h.name}</div>
-                    <div style="font-size:11px;color:#64748b;">${h.lat}, ${h.lon}</div>
-                </div>
-                <div style="font-size:12px;color:#60a5fa;">#${i+1}</div>
-            </div>`
-        ).join('');
+        // 버전 선택 오버레이 표시
+        const overlay = document.getElementById('admin-version-overlay');
+        if (overlay) overlay.style.display = 'flex';
+    }
 
-        await adminLoadData();
+    function selectAdminVersion(v) {
+        localStorage.setItem('adminVersion', v);
+        window.location.href = v === 'pc' ? 'admin.html' : 'admin-mobile.html';
     }
 
     async function adminLoadData() {
@@ -2933,7 +2936,7 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
             adminRenderClassList();
             adminPopulateAssignSelects();
         } catch(e) {
-            alert('데이터 로드 실패: ' + e.message);
+            showToast('데이터 로드 실패: ' + e.message, 'error');
         }
         showLoader(false);
     }
@@ -2991,7 +2994,7 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
         const studentId = document.getElementById('admin-student-select').value;
         const hospitalSel = document.getElementById('admin-hospital-select');
         const opt = hospitalSel.options[hospitalSel.selectedIndex];
-        if (!studentId || !hospitalSel.value) { alert('학생과 병원을 선택해주세요.'); return; }
+        if (!studentId || !hospitalSel.value) { showToast('학생과 병원을 선택해주세요.', 'info'); return; }
         const stuName = document.getElementById('admin-student-select').options[document.getElementById('admin-student-select').selectedIndex].text.split(' (')[0];
         if (!confirm(`${stuName} → ${opt.text} 으로 변경하시겠습니까?`)) return;
         showLoader(true);
@@ -2999,16 +3002,16 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
             await window.fsUpdateDoc(window.fsDoc(window.db, 'students', String(studentId)), {
                 hospital: opt.text, hospitalLat: parseFloat(opt.dataset.lat), hospitalLon: parseFloat(opt.dataset.lon)
             });
-            alert('✅ 병원 변경 완료!');
+            showToast('✅ 병원 변경 완료!', 'success');
             await adminLoadData();
-        } catch(e) { alert('변경 실패: ' + e.message); }
+        } catch(e) { showToast('변경 실패: ' + e.message, 'error'); }
         showLoader(false);
     }
 
     async function adminCreateClass() {
         const name = document.getElementById('new-class-name').value.trim();
-        if (!name) { alert('반 이름을 입력해주세요.'); return; }
-        if (adminClassesList.find(c => c.name === name)) { alert('이미 존재하는 반 이름입니다.'); return; }
+        if (!name) { showToast('반 이름을 입력해주세요.', 'info'); return; }
+        if (adminClassesList.find(c => c.name === name)) { showToast('이미 존재하는 반 이름입니다.', 'info'); return; }
         showLoader(true);
         try {
             const classId = 'class_' + Date.now();
@@ -3016,16 +3019,16 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
                 name, academyId: CONFIG.ACADEMY_ID, students: [], createdAt: Date.now()
             });
             document.getElementById('new-class-name').value = '';
-            alert('✅ 반 추가 완료!');
+            showToast('✅ 반 추가 완료!', 'success');
             await adminLoadData();
-        } catch(e) { alert('추가 실패: ' + e.message); }
+        } catch(e) { showToast('추가 실패: ' + e.message, 'error'); }
         showLoader(false);
     }
 
     async function adminAssignStudentToClass() {
         const studentId = document.getElementById('assign-student-select').value;
         const classId   = document.getElementById('assign-class-select').value;
-        if (!studentId || !classId) { alert('학생과 반을 선택해주세요.'); return; }
+        if (!studentId || !classId) { showToast('학생과 반을 선택해주세요.', 'info'); return; }
         const st = adminStudentsList.find(s => s.kakaoId === studentId);
         const cl = adminClassesList.find(c => c.id === classId);
         if (!confirm(`${st?.name} → ${cl?.name} 배정하시겠습니까?`)) return;
@@ -3045,9 +3048,9 @@ if (!document.getElementById('otp-consent-check').checked) { alert('개인정보
             });
             // 학생 문서 업데이트
             await window.fsUpdateDoc(window.fsDoc(window.db, 'students', String(studentId)), { classId });
-            alert('✅ 배정 완료!');
+            showToast('✅ 배정 완료!', 'success');
             await adminLoadData();
-        } catch(e) { alert('배정 실패: ' + e.message); }
+        } catch(e) { showToast('배정 실패: ' + e.message, 'error'); }
         showLoader(false);
     }
 
