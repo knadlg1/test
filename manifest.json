@@ -1,0 +1,24 @@
+{
+  "name": "까마귀 출결관리",
+  "short_name": "까마귀",
+  "description": "간호 실습 출결 관리 앱",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1E3932",
+  "theme_color": "#1E3932",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
