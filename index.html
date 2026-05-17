@@ -1875,18 +1875,20 @@ async function loadIntervals() {
         const computed = computeIntervals(practiceStart, practiceEnd);
         const today = todayKST();
         const intervals = await Promise.all(computed.map(async inv => {
+            // 이 주 다음 월요일 = 일요일(endDate) + 1일
+            const nextMon = new Date(inv.endDate + 'T00:00:00');
+            nextMon.setDate(nextMon.getDate() + 1);
+            const nextMonStr = fmt(nextMon);
+            // 아직 다음 월요일 안됨 → 잠금 (TEST BYPASS: 조건 비활성화)
+            if (false && today < nextMonStr) return { ...inv, status:'locked' };
+            // 이미 서명 완료 확인
             try {
-                // 이 주 다음 월요일 = 일요일(endDate) + 1일
-                const nextMon = new Date(inv.endDate + 'T00:00:00');
-                nextMon.setDate(nextMon.getDate() + 1);
-                const nextMonStr = fmt(nextMon);
-                // 아직 다음 월요일 안됨 → 잠금 (TEST BYPASS: 조건 비활성화)
-                if (false && today < nextMonStr) return { ...inv, status:'locked' };
-                // 이미 서명 완료 확인
                 const sigRef = window.fsDoc(window.db, 'weeklySignatures', String(currentUser.kakaoId)+'_'+inv.startDate);
                 const sigSnap = await window.fsGetDoc(sigRef);
                 if (sigSnap.exists()) return { ...inv, status:'completed' };
-                // 이번 주 출퇴근 기록 확인 (월~일 7일 개별 조회)
+            } catch(e) { /* 서명 조회 실패 시 미완료로 처리 */ }
+            // 이번 주 출퇴근 기록 확인 (월~일 7일 개별 조회)
+            try {
                 const dates = [];
                 let d = new Date(inv.startDate + 'T00:00:00');
                 const endD = new Date(inv.endDate + 'T00:00:00');
@@ -1896,8 +1898,8 @@ async function loadIntervals() {
                 ));
                 const hasRecords = snaps.some(s => s.exists());
                 if (!hasRecords) return { ...inv, status:'locked', noRecords:true };
-                return { ...inv, status:'available' };
-            } catch(e) { return { ...inv, status:'locked' }; }
+            } catch(e) { /* 출결 조회 실패 시 기록 있는 것으로 처리 */ }
+            return { ...inv, status:'available' };
         }));
         currentUser.intervals = intervals;
         renderIntervalList();
