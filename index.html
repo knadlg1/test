@@ -2893,7 +2893,6 @@ function goBackToStep1() {
         const otp = document.getElementById('sig-otp-code').value.trim();
         if (!otp) { showToast('인증번호를 입력해주세요.', 'info'); return; }
 if (!document.getElementById('otp-consent-check').checked) { showToast('개인정보 수집 동의를 체크해주세요.', 'info'); return; }
-        }
         showLoader(true);
         try {
             const response = await fetchWithRetry(CONFIG.GAS_URL, { body: JSON.stringify({ action:'verifyOTP', otp, phone:sigOtpPhone }) });
