@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>마마파파 TV 화면 시안</title>
+<style>
+  :root{--bg:#f4efe8;--ink:#2b2622;--card:#fff;--accent:#d9622b;--tv:#111}
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif}
+  h1{font-size:18px;margin:0 0 4px}
+  p.sub{margin:0 0 12px;font-size:14px;opacity:.75}
+  .tv{width:100%;max-width:960px;aspect-ratio:16/9;background:var(--tv);border:10px solid #333;border-radius:12px;position:relative;overflow:hidden;color:#fff;margin:0 auto}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4%}
+  .screen.on{display:flex}
+  .big{font-size:clamp(22px,5.2vw,52px);font-weight:700;line-height:1.3;margin:0}
+  .mid{font-size:clamp(16px,3vw,30px);margin:.6em 0 0;opacity:.9}
+  .photo{width:62%;aspect-ratio:16/9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:clamp(48px,12vw,120px);margin-bottom:3%}
+  .btn{margin-top:3%;padding:.5em 1.6em;font-size:clamp(20px,4.5vw,44px);font-weight:700;border-radius:999px;background:#fff;color:#111;border:0}
+  .btn.green{background:#2fa84f;color:#fff}
+  .idle{background:linear-gradient(135deg,#27402f,#1b2d4a)}
+  .recv{background:#000}
+  .call{background:#1d3a2a}
+  .pulse{animation:p 1s infinite}
+  @keyframes p{50%{transform:scale(1.08)}}
+  .bar{position:absolute;left:0;bottom:0;height:6px;background:var(--accent);width:0}
+  .ctl{max-width:960px;margin:16px auto 0;display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .ctl button{padding:14px;font-size:15px;border-radius:10px;border:1px solid #cfc6ba;background:var(--card);color:var(--ink)}
+  .note{max-width:960px;margin:12px auto 0;font-size:14px;line-height:1.5}
+  @media (prefers-color-scheme:dark){:root{--bg:#1c1917;--ink:#f1ece6;--card:#2a2623}.ctl button{border-color:#4a443f}}
+</style>
+</head>
+<body>
+<h1>마마파파 TV 화면 시안</h1>
+<p class="sub">아래 버튼은 "가족 폰에서 일어나는 일"입니다. TV 화면은 어르신이 보는 모습이고, 리모컨 아무 키(키보드 아무 키)가 "버튼 1개"입니다.</p>
+
+<div class="tv" id="tv">
+  <div class="screen idle on" id="idle">
+    <p class="big">🌿 오늘도 평안한 하루 되세요</p>
+    <p class="mid" id="clock"></p>
+  </div>
+  <div class="screen recv" id="recv">
+    <div class="photo" id="photo"></div>
+    <p class="big" id="who"></p>
+    <div class="bar" id="bar"></div>
+  </div>
+  <div class="screen idle" id="replay">
+    <p class="big">지난번 영상, 다시 보시겠어요?</p>
+    <button class="btn green pulse">▶ 다시 보기</button>
+    <p class="mid">아무 버튼이나 누르세요 · 안 눌러도 괜찮아요</p>
+  </div>
+  <div class="screen call" id="call">
+    <p class="mid">📞 전화 왔어요</p>
+    <p class="big">큰딸 지은이</p>
+    <button class="btn green pulse">받기</button>
+    <p class="mid">아무 버튼이나 누르세요</p>
+  </div>
+  <div class="screen call" id="talk">
+    <p class="big">통화 중 (영상통화는 후속 단계)</p>
+    <p class="mid">아무 버튼을 누르면 끝나요</p>
+  </div>
+</div>
+
+<div class="ctl">
+  <button id="sendPhoto">📷 가족이 사진 보내기</button>
+  <button id="sendVideo">🎬 가족이 영상 보내기</button>
+  <button id="askReplay">🔁 다시보기 알림 시각 도래</button>
+  <button id="dial">📞 가족이 영상통화 걸기</button>
+</div>
+<p class="note">동작 규칙: ① 사진·영상은 조작 없이 자동 재생 후 대기 화면 복귀 ② 다시보기는 버튼 1개, 안 누르면 10초 뒤 자동 닫힘 ③ 전화는 받기 버튼 1개, 안 받으면 20초 뒤 부재중 처리(가족에게 알림).</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const screens=["idle","recv","replay","call","talk"];
+let timer=null,state="idle";
+function show(n,ms,next){
+  clearTimeout(timer);state=n;
+  screens.forEach(s=>$(s).classList.toggle("on",s===n));
+  if(ms) timer=setTimeout(()=>show(next||"idle"),ms);
+}
+function receive(kind){
+  const names=["큰딸 지은이","막내 민수","손주 하준이"];
+  const who=names[Math.floor(Math.random()*names.length)];
+  const p=$("photo");
+  p.style.background=kind==="video"?"linear-gradient(135deg,#7a3,#37a)":"linear-gradient(135deg,#e96,#fc6)";
+  p.textContent=kind==="video"?"🎬":"🌸";
+  $("who").textContent=who+"가 "+(kind==="video"?"영상":"사진")+"을 보냈어요";
+  const bar=$("bar");bar.style.transition="none";bar.style.width="0";
+  show("recv",8000,"idle");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{bar.style.transition="width 8s linear";bar.style.width="100%"}));
+}
+$("sendPhoto").onclick=()=>receive("photo");
+$("sendVideo").onclick=()=>receive("video");
+$("askReplay").onclick=()=>show("replay",10000,"idle");
+$("dial").onclick=()=>show("call",20000,"idle");
+// 리모컨 아무 키 = 버튼 1개
+function press(){
+  if(state==="replay") receive("video");
+  else if(state==="call") show("talk");
+  else if(state==="talk") show("idle");
+}
+addEventListener("keydown",press);
+$("tv").addEventListener("click",press);
+function tick(){const d=new Date();$("clock").textContent=d.toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"long"})+" "+d.toLocaleTimeString("ko-KR",{hour:"numeric",minute:"2-digit"})}
+tick();setInterval(tick,30000);
+</script>
+</body>
+</html>
